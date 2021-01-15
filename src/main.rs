@@ -38,13 +38,22 @@ fn main() -> Result<(), Box<dyn Error>> {
             let rects = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
-                    Constraint::Percentage(90),
-                    Constraint::Percentage(10),
+                    Constraint::Length(f.size().height - 3 - 2 * 2),
+                    Constraint::Length(3),
                 ].as_ref())
-                .margin(5)
+                .margin(2)
                 .split(f.size());
-            let t = state.as_table();
-            f.render_widget(t, rects[0]);
+            let top_blocks = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Length(rects[0].width - 30),
+                    Constraint::Max(30)
+                ].as_ref())
+                .split(rects[0]);
+            let rt = state.resources_as_table();
+            f.render_widget(rt, top_blocks[0]);
+            let wt = state.player_workers_as_table(0);
+            f.render_widget(wt, top_blocks[1]);
             let exec_status = if paused {
                 "Paused"
             } else {

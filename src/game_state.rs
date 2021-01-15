@@ -1,11 +1,13 @@
 use std::{fmt, convert::TryInto};
 use tui::{
     layout::Constraint,
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
+    text::Span,
     widgets::{Block, Borders, BorderType, Cell, Row, Table},
 };
 
 use crate::player::Player;
+use crate::player::WorkerAction;
 use crate::resource::Resource;
 
 #[derive(Debug)]
@@ -33,12 +35,10 @@ impl GameState {
         }
     }
 
-    pub fn as_table(&self) -> Table {
-        let resource_names: Vec<_> = std::iter::once(Cell::from("Player Id"))
-            .chain(
-                (0..Resource::count())
-                    .into_iter()
-                    .map(|i| Cell::from(<_ as TryInto<Resource>>::try_into(i).unwrap().to_string())))
+    pub fn resources_as_table(&self) -> Table {
+        let header: Vec<_> = std::iter::once(Cell::from("Player Id"))
+            .chain(Resource::names()
+                .map(|s| Cell::from(s)))
             .collect();
         let content = self.players.iter().map(| p | {
             let mut row = Vec::new();
@@ -48,7 +48,7 @@ impl GameState {
             }
             row
         });
-        let header = Row::new(resource_names);
+        let header = Row::new(header);
         let rows = content
             .map(|mut r| {
                 Row::new(r.drain(..).map(|c| Cell::from(c)))
@@ -59,6 +59,30 @@ impl GameState {
             .style(Style::default()
                 .fg(Color::White))
             .block(Block::default().borders(Borders::ALL).border_type(BorderType::Thick).style(Style::default().bg(Color::DarkGray)))
+    }
+
+    pub fn player_workers_as_table(&self, player: u8) -> Table {
+        let p = &self.players[player as usize];
+        let content = (0..Resource::count())
+            .into_iter()
+            .map(|i| {
+                let res = <_ as TryInto<Resource>>::try_into(i).unwrap();
+                let count = p.workers.iter()
+                    .filter(|w| w.current_action == WorkerAction::Gather(res))
+                    .count();
+                Row::new(vec![Cell::from(res.to_string()), Cell::from(count.to_string())])
+            });
+        Table::new(content)
+            .widths(&[Constraint::Percentage(80), Constraint::Percentage(20)])
+            .style(Style::default())
+            .block(Block::default()
+                .title(Span::styled("Workers", Style::default()
+                        .add_modifier(Modifier::BOLD)
+                        .fg(Color::LightRed)))
+                .borders(Borders::ALL)
+                .border_type(BorderType::Thick)
+                .style(Style::default()
+                    .bg(Color::DarkGray)))
     }
 }
 
