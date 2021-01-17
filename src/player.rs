@@ -5,6 +5,7 @@ use crate::resource::Resource;
 #[derive(Debug, PartialEq)]
 pub enum WorkerAction {
     Gather(Resource),
+    Idle,
 }
 
 #[derive(Debug)]
@@ -64,6 +65,7 @@ impl Player {
         for w in self.workers.iter() {
             match &w.current_action {
                 WorkerAction::Gather(r) => *self.stockpile.get(*r) += 1,
+                WorkerAction::Idle => ()
             }
         }
     }

@@ -63,7 +63,11 @@ impl GameState {
 
     pub fn player_workers_as_table(&self, player: u8) -> Table {
         let p = &self.players[player as usize];
-        let content = (0..Resource::count())
+        let idle_count = p.workers.iter()
+            .filter(|w| w.current_action == WorkerAction::Idle)
+            .count();
+        let idle_row = std::iter::once(Row::new(vec![Cell::from("Idle"), Cell::from(idle_count.to_string())]));
+        let active_workers = (0..Resource::count())
             .into_iter()
             .map(|i| {
                 let res = <_ as TryInto<Resource>>::try_into(i).unwrap();
@@ -72,7 +76,7 @@ impl GameState {
                     .count();
                 Row::new(vec![Cell::from(res.to_string()), Cell::from(count.to_string())])
             });
-        Table::new(content)
+        Table::new(idle_row.chain(active_workers))
             .widths(&[Constraint::Percentage(80), Constraint::Percentage(20)])
             .style(Style::default())
             .block(Block::default()
