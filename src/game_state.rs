@@ -87,6 +87,35 @@ impl GameState {
                 .border_type(BorderType::Thick)
                 .style(Style::default()
                     .bg(Color::DarkGray)))
+            .highlight_style(Style::default()
+                .add_modifier(Modifier::BOLD))
+            .highlight_symbol(">>")
+    }
+
+    pub fn deallocate_player_worker(&mut self, player: u8, r: Resource) -> bool {
+        let player = &mut self.players[player as usize];
+        if let Some(worker) =
+            player.workers
+                .iter_mut()
+                .find(|w| w.current_action == WorkerAction::Gather(r)) {
+            worker.current_action = WorkerAction::Idle;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn allocate_player_worker(&mut self, player: u8, r: Resource) -> bool {
+        let player = &mut self.players[player as usize];
+        if let Some(worker) =
+            player.workers
+                .iter_mut()
+                .find(|w| w.current_action == WorkerAction::Idle) {
+            worker.current_action = WorkerAction::Gather(r);
+            true
+        } else {
+            false
+        }
     }
 }
 
