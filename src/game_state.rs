@@ -13,6 +13,7 @@ use crate::resource::Resource;
 #[derive(Debug)]
 pub struct GameState {
     players: Vec<Player>,
+    paused: bool,
 }
 
 const TABLE_COLS: usize = Resource::count() + 1;
@@ -25,7 +26,8 @@ impl GameState {
             players.push(Player::new(id));
         }
         GameState {
-            players
+            players,
+            paused: false
         }
     }
 
@@ -116,6 +118,14 @@ impl GameState {
         } else {
             false
         }
+    }
+
+    pub fn toggle_paused(&mut self) {
+        self.paused = !self.paused;
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.paused
     }
 }
 
