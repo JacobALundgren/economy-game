@@ -2,14 +2,15 @@ use std::{fmt, convert::TryInto};
 
 use crate::resource::Resource;
 
-#[derive(Debug)]
-enum WorkerAction {
+#[derive(Debug, PartialEq)]
+pub enum WorkerAction {
     Gather(Resource),
+    Idle,
 }
 
 #[derive(Debug)]
-struct Worker {
-    current_action: WorkerAction,
+pub struct Worker {
+    pub current_action: WorkerAction,
 }
 
 impl Worker {
@@ -51,7 +52,7 @@ impl fmt::Display for Stockpile {
 #[derive(Debug)]
 pub struct Player {
     id: u8,
-    workers: Vec<Worker>,
+    pub workers: Vec<Worker>,
     stockpile: Stockpile,
 }
 
@@ -64,6 +65,7 @@ impl Player {
         for w in self.workers.iter() {
             match &w.current_action {
                 WorkerAction::Gather(r) => *self.stockpile.get(*r) += 1,
+                WorkerAction::Idle => ()
             }
         }
     }
