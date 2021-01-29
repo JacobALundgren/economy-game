@@ -1,9 +1,43 @@
-use std::convert::TryInto;
-use tui::{backend::Backend, layout::{Constraint, Direction, Layout}, Terminal, widgets::{Block, Borders, Paragraph, TableState}};
+use std::{fmt, convert::{TryFrom, TryInto}};
+use tui::{backend::Backend, layout::{Constraint, Direction, Layout, Rect}, style::{Color, Modifier, Style}, terminal::{Frame, Terminal}, text::{Span, Spans}, widgets::{Block, Borders, Paragraph, TableState, Tabs}};
 
 use crate::game_state::GameState;
 use crate::input::InputAction;
 use crate::resource::Resource;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Tab {
+    Resources = 0,
+}
+
+impl Tab {
+    pub const fn count() -> usize {
+        (Tab::Resources as usize) + 1
+    }
+
+    pub fn get_hotkey(&self) -> u8 {
+        match self {
+            Tab::Resources => 'r' as u8,
+        }
+    }
+}
+
+impl TryFrom<usize> for Tab {
+    type Error = ();
+
+    fn try_from(v: usize) -> Result<Self, Self::Error> {
+        match v {
+            0 => Ok(Tab::Resources),
+            _ => Err(()),
+        }
+    }
+}
+
+impl fmt::Display for Tab {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
 
 #[derive(Clone, Default)]
 struct WorkerTableState {
@@ -36,50 +70,87 @@ impl WorkerTableState {
     }
 }
 
+fn draw_tabs<B: Backend>(f: &mut Frame<B>, area: Rect, sel: Tab) {
+    let tab_bar = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(100)
+        ].as_ref())
+        .split(area);
+    let tabs = Tabs::new(
+            (0..Tab::count())
+                .into_iter()
+                .map(|i| <_ as TryInto<Tab>>::try_into(i).unwrap())
+                .map(|tab| Spans::from(vec![Span::from(format!("{} ({})", tab.to_string(), tab.get_hotkey() as char))])).collect()
+        )
+        .block(Block::default().borders(Borders::ALL))
+        .select(sel as usize)
+        .highlight_style(Style::default()
+            .fg(Color::LightRed)
+            .add_modifier(Modifier::BOLD));
+    f.render_widget(tabs, tab_bar[0]);
+}
+
+fn draw_resources<B: Backend>(f: &mut Frame<B>, area: Rect, state: &GameState, selected: &mut WorkerTableState) {
+    let main_blocks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Length(area.width - 30),
+            Constraint::Max(30)
+        ].as_ref())
+        .split(area);
+    let rt = state.resources_as_table();
+    f.render_widget(rt, main_blocks[0]);
+    let wt = state.player_workers_as_table(0);
+    f.render_stateful_widget(wt, main_blocks[1], selected.get_mut());
+}
+
+fn draw_status<B: Backend>(f: &mut Frame<B>, area: Rect, state: &GameState) {
+    let exec_status = if state.is_paused() {
+        "Paused"
+    } else {
+        "Running"
+    };
+    let exec_status_box = Paragraph::new(exec_status)
+        .block(Block::default().borders(Borders::ALL));
+    f.render_widget(exec_status_box, area);
+}
+
 pub struct Visualization<B: Backend> {
     term: Terminal<B>,
     selected: WorkerTableState,
+    tab: Tab,
 }
 
 impl<B: Backend> Visualization<B> {
     pub fn new(term: Terminal<B>) -> Self {
         Visualization {
             term,
-            selected: WorkerTableState::new()
+            selected: WorkerTableState::new(),
+            tab: Tab::Resources,
         }
     }
 
-    pub fn draw_resources(&mut self, state: &GameState) {
-        let Visualization::<B> { term: ref mut t, selected: ref mut sel } = self;
+
+    pub fn draw(&mut self, state: &mut GameState) {
+        let Visualization::<B> { term: ref mut t, selected: ref mut sel, tab: ref mut sel_tab } = self;
         t.draw(|f| {
             let rects = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
-                    Constraint::Length(f.size().height - 3 - 2 * 2),
+                    Constraint::Length(3),
+                    Constraint::Length(f.size().height - 3 * 2 - 2 * 2),
                     Constraint::Length(3),
                 ].as_ref())
                 .margin(2)
                 .split(f.size());
-            let top_blocks = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints([
-                    Constraint::Length(rects[0].width - 30),
-                    Constraint::Max(30)
-                ].as_ref())
-                .split(rects[0]);
-            let rt = state.resources_as_table();
-            f.render_widget(rt, top_blocks[0]);
-            let wt = state.player_workers_as_table(0);
-            f.render_stateful_widget(wt, top_blocks[1], &mut *sel.get_mut());
-            let exec_status = if state.is_paused() {
-                "Paused"
-            } else {
-                "Running"
-            };
-            let exec_status_box = Paragraph::new(exec_status)
-                .block(Block::default().borders(Borders::ALL));
-            f.render_widget(exec_status_box, rects[1]);
+            draw_tabs(f, rects[0], *sel_tab);
+            match *sel_tab {
+                Tab::Resources => draw_resources(f, rects[1], state, sel),
+            }
+            draw_status(f, rects[2], &state);
         }).unwrap();
+
     }
 
     pub fn handle_input(&mut self, input: InputAction, state: &mut GameState) {
@@ -96,6 +167,7 @@ impl<B: Backend> Visualization<B> {
                 let resource = <_ as TryInto<Resource>>::try_into(self.selected.get_row() - 1).unwrap();
                 state.allocate_player_worker(0, resource);
             },
+            InputAction::SwitchTab(in_tab) => self.tab = in_tab,
             _ => (),
         }
     }

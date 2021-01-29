@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 state.step();
             }
         }
-        vis.draw_resources(&mut state);
+        vis.draw(&mut state);
         thread::sleep(Duration::from_millis(20));
     }
     Ok(())
