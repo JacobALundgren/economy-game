@@ -1,5 +1,12 @@
 use std::{fmt, convert::{TryFrom, TryInto}};
-use tui::{backend::Backend, layout::{Constraint, Direction, Layout, Rect}, style::{Color, Modifier, Style}, terminal::{Frame, Terminal}, text::{Span, Spans}, widgets::{Block, Borders, Paragraph, TableState, Tabs}};
+use tui::{
+    backend::Backend,
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Modifier, Style},
+    terminal::{Frame, Terminal},
+    text::{Span, Spans},
+    widgets::{Block, Borders, BorderType, Cell, Paragraph, Row, Table, TableState, Tabs}
+};
 
 use crate::game_state::GameState;
 use crate::input::InputAction;
@@ -8,16 +15,18 @@ use crate::resource::Resource;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Tab {
     Resources = 0,
+    Help = 1,
 }
 
 impl Tab {
     pub const fn count() -> usize {
-        (Tab::Resources as usize) + 1
+        (Tab::Help as usize) + 1
     }
 
     pub fn get_hotkey(&self) -> u8 {
         match self {
             Tab::Resources => 'r' as u8,
+            Tab::Help => 'h' as u8,
         }
     }
 }
@@ -28,6 +37,7 @@ impl TryFrom<usize> for Tab {
     fn try_from(v: usize) -> Result<Self, Self::Error> {
         match v {
             0 => Ok(Tab::Resources),
+            1 => Ok(Tab::Help),
             _ => Err(()),
         }
     }
@@ -105,6 +115,42 @@ fn draw_resources<B: Backend>(f: &mut Frame<B>, area: Rect, state: &GameState, s
     f.render_stateful_widget(wt, main_blocks[1], selected.get_mut());
 }
 
+fn draw_help<B: Backend>(f: &mut Frame<B>, area: Rect) {
+    let blocks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(80),
+            Constraint::Percentage(20)
+        ].as_ref())
+        .split(area);
+    let overview = Paragraph::new(
+        concat!("Control the allocation of your workers to different resources",
+            " using the arrow keys. Balance your economy to produce what you need."))
+        .block(Block::default()
+            .style(Style::default()
+                .bg(Color::DarkGray))
+            .borders(Borders::ALL)
+            .border_type(BorderType::Thick)
+            .title(Span::from("Overview")));
+    f.render_widget(overview, blocks[0]);
+
+    let hotkeys = vec![
+        ("p", "Toggle pause"),
+        ("q", "Exit program")
+    ];
+    let table = Table::new(hotkeys
+            .iter()
+            .map(|(key, desc)| Row::new(vec![Cell::from(*key), Cell::from(*desc)])))
+        .widths(&[Constraint::Percentage(10), Constraint::Percentage(90)])
+        .block(Block::default()
+            .style(Style::default()
+                .bg(Color::DarkGray))
+            .borders(Borders::ALL)
+            .border_type(BorderType::Thick)
+            .title(Span::from("Hotkeys")));
+    f.render_widget(table, blocks[1]);
+}
+
 fn draw_status<B: Backend>(f: &mut Frame<B>, area: Rect, state: &GameState) {
     let exec_status = if state.is_paused() {
         "Paused"
@@ -147,6 +193,7 @@ impl<B: Backend> Visualization<B> {
             draw_tabs(f, rects[0], *sel_tab);
             match *sel_tab {
                 Tab::Resources => draw_resources(f, rects[1], state, sel),
+                Tab::Help => draw_help(f, rects[1]),
             }
             draw_status(f, rects[2], &state);
         }).unwrap();
