@@ -4,12 +4,12 @@ mod player;
 mod resource;
 mod visualization;
 
-use std::{error::Error, io, io::Read, thread, time::Duration, };
-use termion::{async_stdin, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen, };
-use tui::{backend::TermionBackend, Terminal, };
+use std::{error::Error, io, io::Read, thread, time::Duration};
+use termion::{async_stdin, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+use tui::{backend::TermionBackend, Terminal};
 
 use game_state::GameState;
-use input::{InputAction, parse_input};
+use input::{parse_input, InputAction};
 use visualization::Visualization;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -42,4 +42,3 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
     Ok(())
 }
-

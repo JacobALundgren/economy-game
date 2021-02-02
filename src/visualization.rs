@@ -1,11 +1,14 @@
-use std::{fmt, convert::{TryFrom, TryInto}};
+use std::{
+    convert::{TryFrom, TryInto},
+    fmt,
+};
 use tui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     terminal::{Frame, Terminal},
     text::{Span, Spans},
-    widgets::{Block, Borders, BorderType, Cell, Paragraph, Row, Table, TableState, Tabs}
+    widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table, TableState, Tabs},
 };
 
 use crate::game_state::GameState;
@@ -56,7 +59,7 @@ trait Tab {
 
 #[derive(Clone)]
 struct WorkerTableState {
-    state : TableState,
+    state: TableState,
 }
 
 impl WorkerTableState {
@@ -70,18 +73,23 @@ impl WorkerTableState {
 
     fn next(&mut self) {
         let curr = self.state.selected().unwrap();
-        self.state.select(Some(curr.rem_euclid(Resource::count()) + 1));
+        self.state
+            .select(Some(curr.rem_euclid(Resource::count()) + 1));
     }
 
     fn prev(&mut self) {
         let curr = self.state.selected().unwrap();
-        self.state.select(Some(((curr as i32 - 2).rem_euclid(Resource::count() as i32) + 1) as usize));
+        self.state.select(Some(
+            ((curr as i32 - 2).rem_euclid(Resource::count() as i32) + 1) as usize,
+        ));
     }
 }
 
 impl Default for WorkerTableState {
     fn default() -> Self {
-        let mut ret = WorkerTableState { state: TableState::default() };
+        let mut ret = WorkerTableState {
+            state: TableState::default(),
+        };
         ret.state.select(Some(1));
         ret
     }
@@ -89,17 +97,14 @@ impl Default for WorkerTableState {
 
 #[derive(Default)]
 struct ResourceTab {
-    worker_selected: WorkerTableState
+    worker_selected: WorkerTableState,
 }
 
 impl Tab for ResourceTab {
     fn draw<B: Backend>(&mut self, f: &mut Frame<B>, area: Rect, state: &GameState) {
         let main_blocks = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Length(area.width - 30),
-                Constraint::Max(30)
-            ].as_ref())
+            .constraints([Constraint::Length(area.width - 30), Constraint::Max(30)].as_ref())
             .split(area);
         let rt = state.resources_as_table();
         f.render_widget(rt, main_blocks[0]);
@@ -112,13 +117,15 @@ impl Tab for ResourceTab {
             InputAction::MoveUp => self.worker_selected.prev(),
             InputAction::MoveDown => self.worker_selected.next(),
             InputAction::Decrease => {
-                let resource = <_ as TryInto<Resource>>::try_into(self.worker_selected.get_row() - 1).unwrap();
+                let resource =
+                    <_ as TryInto<Resource>>::try_into(self.worker_selected.get_row() - 1).unwrap();
                 state.deallocate_player_worker(0, resource);
-            },
+            }
             InputAction::Increase => {
-                let resource = <_ as TryInto<Resource>>::try_into(self.worker_selected.get_row() - 1).unwrap();
+                let resource =
+                    <_ as TryInto<Resource>>::try_into(self.worker_selected.get_row() - 1).unwrap();
                 state.allocate_player_worker(0, resource);
-            },
+            }
             _ => (),
         }
     }
@@ -131,36 +138,35 @@ impl Tab for HelpTab {
     fn draw<B: Backend>(&mut self, f: &mut Frame<B>, area: Rect, _: &GameState) {
         let blocks = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Percentage(80),
-                Constraint::Percentage(20)
-            ].as_ref())
+            .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref())
             .split(area);
-        let overview = Paragraph::new(
-            concat!("Control the allocation of your workers to different resources",
-                " using the arrow keys. Balance your economy to produce what you need."))
-            .block(Block::default()
-                .style(Style::default()
-                    .bg(Color::DarkGray))
+        let overview = Paragraph::new(concat!(
+            "Control the allocation of your workers to different resources",
+            " using the arrow keys. Balance your economy to produce what you need."
+        ))
+        .block(
+            Block::default()
+                .style(Style::default().bg(Color::DarkGray))
                 .borders(Borders::ALL)
                 .border_type(BorderType::Thick)
-                .title(Span::from("Overview")));
+                .title(Span::from("Overview")),
+        );
         f.render_widget(overview, blocks[0]);
 
-        let hotkeys = vec![
-            ("p", "Toggle pause"),
-            ("q", "Exit program")
-        ];
-        let table = Table::new(hotkeys
+        let hotkeys = vec![("p", "Toggle pause"), ("q", "Exit program")];
+        let table = Table::new(
+            hotkeys
                 .iter()
-                .map(|(key, desc)| Row::new(vec![Cell::from(*key), Cell::from(*desc)])))
-            .widths(&[Constraint::Percentage(10), Constraint::Percentage(90)])
-            .block(Block::default()
-                .style(Style::default()
-                    .bg(Color::DarkGray))
+                .map(|(key, desc)| Row::new(vec![Cell::from(*key), Cell::from(*desc)])),
+        )
+        .widths(&[Constraint::Percentage(10), Constraint::Percentage(90)])
+        .block(
+            Block::default()
+                .style(Style::default().bg(Color::DarkGray))
                 .borders(Borders::ALL)
                 .border_type(BorderType::Thick)
-                .title(Span::from("Hotkeys")));
+                .title(Span::from("Hotkeys")),
+        );
         f.render_widget(table, blocks[1]);
     }
 
@@ -170,21 +176,28 @@ impl Tab for HelpTab {
 fn draw_tabs<B: Backend>(f: &mut Frame<B>, area: Rect, sel: TabType) {
     let tab_bar = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(100)
-        ].as_ref())
+        .constraints([Constraint::Percentage(100)].as_ref())
         .split(area);
     let tabs = Tabs::new(
-            (0..TabType::count())
-                .into_iter()
-                .map(|i| <_ as TryInto<TabType>>::try_into(i).unwrap())
-                .map(|tab| Spans::from(vec![Span::from(format!("{} ({})", tab.to_string(), tab.get_hotkey() as char))])).collect()
-        )
-        .block(Block::default().borders(Borders::ALL))
-        .select(sel as usize)
-        .highlight_style(Style::default()
+        (0..TabType::count())
+            .into_iter()
+            .map(|i| <_ as TryInto<TabType>>::try_into(i).unwrap())
+            .map(|tab| {
+                Spans::from(vec![Span::from(format!(
+                    "{} ({})",
+                    tab.to_string(),
+                    tab.get_hotkey() as char
+                ))])
+            })
+            .collect(),
+    )
+    .block(Block::default().borders(Borders::ALL))
+    .select(sel as usize)
+    .highlight_style(
+        Style::default()
             .fg(Color::LightRed)
-            .add_modifier(Modifier::BOLD));
+            .add_modifier(Modifier::BOLD),
+    );
     f.render_widget(tabs, tab_bar[0]);
 }
 
@@ -194,8 +207,7 @@ fn draw_status<B: Backend>(f: &mut Frame<B>, area: Rect, state: &GameState) {
     } else {
         "Running"
     };
-    let exec_status_box = Paragraph::new(exec_status)
-        .block(Block::default().borders(Borders::ALL));
+    let exec_status_box = Paragraph::new(exec_status).block(Block::default().borders(Borders::ALL));
     f.render_widget(exec_status_box, area);
 }
 
@@ -221,15 +233,19 @@ impl<B: Backend> Visualization<B> {
             term: ref mut t,
             tab: ref mut sel_tab,
             resource_tab: ref mut res_tab,
-            help_tab: ref mut h_tab } = self;
+            help_tab: ref mut h_tab,
+        } = self;
         t.draw(|f| {
             let rects = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Length(3),
-                    Constraint::Length(f.size().height - 3 * 2 - 2 * 2),
-                    Constraint::Length(3),
-                ].as_ref())
+                .constraints(
+                    [
+                        Constraint::Length(3),
+                        Constraint::Length(f.size().height - 3 * 2 - 2 * 2),
+                        Constraint::Length(3),
+                    ]
+                    .as_ref(),
+                )
                 .margin(2)
                 .split(f.size());
             draw_tabs(f, rects[0], *sel_tab);
@@ -238,8 +254,8 @@ impl<B: Backend> Visualization<B> {
                 TabType::Help => h_tab.draw(f, rects[1], state),
             }
             draw_status(f, rects[2], &state);
-        }).unwrap();
-
+        })
+        .unwrap();
     }
 
     pub fn handle_input(&mut self, input: InputAction, state: &mut GameState) {
@@ -247,14 +263,15 @@ impl<B: Backend> Visualization<B> {
             tab: ref mut sel_tab,
             resource_tab: ref mut res_tab,
             help_tab: ref mut h_tab,
-            .. } = self;
+            ..
+        } = self;
         match input {
             InputAction::TogglePause => state.toggle_paused(),
             InputAction::SwitchTab(in_tab) => self.tab = in_tab,
             i => match sel_tab {
                 TabType::Resources => res_tab.handle_input(i, state),
                 TabType::Help => h_tab.handle_input(i, state),
-            }
+            },
         }
     }
 }

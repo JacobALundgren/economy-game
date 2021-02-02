@@ -1,4 +1,7 @@
-use std::{fmt, convert::{TryFrom, TryInto}};
+use std::{
+    convert::{TryFrom, TryInto},
+    fmt,
+};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Resource {
     Iron = 0,
@@ -11,13 +14,13 @@ impl Resource {
         (Resource::Stone as usize) + 1
     }
 
-    pub fn names() -> impl Iterator<Item=String> {
+    pub fn names() -> impl Iterator<Item = String> {
         (0..Resource::count())
             .into_iter()
             .map(|i| <_ as TryInto<Resource>>::try_into(i).unwrap().to_string())
     }
 }
- 
+
 impl TryFrom<usize> for Resource {
     type Error = ();
 
@@ -26,7 +29,7 @@ impl TryFrom<usize> for Resource {
             0 => Ok(Resource::Iron),
             1 => Ok(Resource::Copper),
             2 => Ok(Resource::Stone),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
@@ -36,4 +39,3 @@ impl fmt::Display for Resource {
         write!(f, "{:?}", self)
     }
 }
-

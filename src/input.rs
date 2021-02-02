@@ -1,4 +1,4 @@
-use std::{io, convert::TryInto};
+use std::{convert::TryInto, io};
 
 use crate::visualization::TabType;
 pub enum InputAction {
@@ -18,7 +18,7 @@ fn match_tab_hotkey(key: u8) -> Option<TabType> {
         .find(|tab| tab.get_hotkey() == key)
 }
 
-pub fn parse_input<R: Iterator<Item=Result<u8, io::Error>>>(r: &mut R) -> Option<InputAction> {
+pub fn parse_input<R: Iterator<Item = Result<u8, io::Error>>>(r: &mut R) -> Option<InputAction> {
     let item = r.next()?.ok()?;
     if let Some(tab) = match_tab_hotkey(item) {
         return Some(InputAction::SwitchTab(tab));
@@ -31,7 +31,7 @@ pub fn parse_input<R: Iterator<Item=Result<u8, io::Error>>>(r: &mut R) -> Option
     }
 }
 
-fn parse_escaped<R: Iterator<Item=Result<u8, io::Error>>>(r: &mut R) -> Option<InputAction> {
+fn parse_escaped<R: Iterator<Item = Result<u8, io::Error>>>(r: &mut R) -> Option<InputAction> {
     let item = r.next()?;
     if item.ok()? != b'[' {
         return None;

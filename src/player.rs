@@ -1,4 +1,4 @@
-use std::{fmt, convert::TryInto};
+use std::{convert::TryInto, fmt};
 
 use crate::resource::Resource;
 
@@ -15,18 +15,22 @@ pub struct Worker {
 
 impl Worker {
     fn new() -> Self {
-        Worker { current_action: WorkerAction::Gather(Resource::Iron) }
+        Worker {
+            current_action: WorkerAction::Gather(Resource::Iron),
+        }
     }
 }
 
 #[derive(Debug)]
 pub struct Stockpile {
-    res: [u32; Resource::count()]
+    res: [u32; Resource::count()],
 }
 
 impl Stockpile {
     fn new() -> Self {
-        Stockpile { res: [0; Resource::count()] }
+        Stockpile {
+            res: [0; Resource::count()],
+        }
     }
 
     fn get(&mut self, res: Resource) -> &mut u32 {
@@ -58,14 +62,18 @@ pub struct Player {
 
 impl Player {
     pub fn new(id: u8) -> Self {
-        Player{id, workers: vec![Worker::new(), Worker::new(), Worker::new()], stockpile: Stockpile::new()}
+        Player {
+            id,
+            workers: vec![Worker::new(), Worker::new(), Worker::new()],
+            stockpile: Stockpile::new(),
+        }
     }
 
     pub fn step(&mut self) {
         for w in self.workers.iter() {
             match &w.current_action {
                 WorkerAction::Gather(r) => *self.stockpile.get(*r) += 1,
-                WorkerAction::Idle => ()
+                WorkerAction::Idle => (),
             }
         }
     }
@@ -84,5 +92,3 @@ impl fmt::Display for Player {
         writeln!(f, "{}: {}", self.id, self.stockpile)
     }
 }
-
-
