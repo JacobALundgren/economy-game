@@ -1,6 +1,6 @@
 use std::{io, convert::TryInto};
 
-use crate::visualization::Tab;
+use crate::visualization::TabType;
 pub enum InputAction {
     Quit,
     TogglePause,
@@ -8,13 +8,13 @@ pub enum InputAction {
     MoveDown,
     Decrease,
     Increase,
-    SwitchTab(Tab),
+    SwitchTab(TabType),
 }
 
-fn match_tab_hotkey(key: u8) -> Option<Tab> {
-    (0..Tab::count())
+fn match_tab_hotkey(key: u8) -> Option<TabType> {
+    (0..TabType::count())
         .into_iter()
-        .map(|i| <_ as TryInto<Tab>>::try_into(i).unwrap())
+        .map(|i| <_ as TryInto<TabType>>::try_into(i).unwrap())
         .find(|tab| tab.get_hotkey() == key)
 }
 
