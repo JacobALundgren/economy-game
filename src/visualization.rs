@@ -25,8 +25,8 @@ impl TabType {
 
     pub fn get_hotkey(&self) -> u8 {
         match self {
-            TabType::Resources => 'r' as u8,
-            TabType::Help => 'h' as u8,
+            TabType::Resources => b'r',
+            TabType::Help => b'h',
         }
     }
 }

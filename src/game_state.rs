@@ -40,7 +40,7 @@ impl GameState {
     pub fn resources_as_table(&self) -> Table {
         let header: Vec<_> = std::iter::once(Cell::from("Player Id"))
             .chain(Resource::names()
-                .map(|s| Cell::from(s)))
+                .map(Cell::from))
             .collect();
         let content = self.players.iter().map(| p | {
             let mut row = Vec::new();
@@ -53,7 +53,7 @@ impl GameState {
         let header = Row::new(header);
         let rows = content
             .map(|mut r| {
-                Row::new(r.drain(..).map(|c| Cell::from(c)))
+                Row::new(r.drain(..).map(Cell::from))
             });
         Table::new(rows)
             .header(header)
