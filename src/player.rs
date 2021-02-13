@@ -1,6 +1,7 @@
-use std::{convert::TryInto, fmt};
+use std::fmt;
 
 use crate::resource::Resource;
+use crate::resource::ResourceAmount;
 
 #[derive(Debug, PartialEq)]
 pub enum WorkerAction {
@@ -14,7 +15,7 @@ pub struct Worker {
 }
 
 impl Worker {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Worker {
             current_action: WorkerAction::Gather(Resource::Iron),
         }
@@ -22,42 +23,10 @@ impl Worker {
 }
 
 #[derive(Debug)]
-pub struct Stockpile {
-    res: [u32; Resource::count()],
-}
-
-impl Stockpile {
-    fn new() -> Self {
-        Stockpile {
-            res: [0; Resource::count()],
-        }
-    }
-
-    fn get(&mut self, res: Resource) -> &mut u32 {
-        &mut self.res[res as usize]
-    }
-
-    pub fn iter(&self) -> std::slice::Iter<u32> {
-        self.res.iter()
-    }
-}
-
-impl fmt::Display for Stockpile {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for i in 0..self.res.len() {
-            if let Ok(name) = <_ as TryInto<Resource>>::try_into(i) {
-                write!(f, "{}: {}\t", name.to_string(), self.res[i])?;
-            }
-        }
-        Ok(())
-    }
-}
-
-#[derive(Debug)]
 pub struct Player {
     id: u8,
     pub workers: Vec<Worker>,
-    stockpile: Stockpile,
+    stockpile: ResourceAmount,
 }
 
 impl Player {
@@ -65,14 +34,14 @@ impl Player {
         Player {
             id,
             workers: vec![Worker::new(), Worker::new(), Worker::new()],
-            stockpile: Stockpile::new(),
+            stockpile: ResourceAmount::new(),
         }
     }
 
     pub fn step(&mut self) {
         for w in self.workers.iter() {
             match &w.current_action {
-                WorkerAction::Gather(r) => *self.stockpile.get(*r) += 1,
+                WorkerAction::Gather(r) => *self.stockpile.get_mut(*r) += 1,
                 WorkerAction::Idle => (),
             }
         }
@@ -82,8 +51,12 @@ impl Player {
         self.id
     }
 
-    pub fn get_stockpile(&self) -> &Stockpile {
+    pub fn get_stockpile(&self) -> &ResourceAmount {
         &self.stockpile
+    }
+
+    pub fn get_stockpile_mut(&mut self) -> &mut ResourceAmount {
+        &mut self.stockpile
     }
 }
 

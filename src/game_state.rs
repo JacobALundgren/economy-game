@@ -1,10 +1,12 @@
-use std::{convert::TryInto, fmt};
+use std::fmt;
 use tui::{
     layout::Constraint,
     style::{Color, Modifier, Style},
     text::Span,
     widgets::{Block, BorderType, Borders, Cell, Row, Table},
 };
+
+use enum_iterator::IntoEnumIterator;
 
 use crate::player::Player;
 use crate::player::WorkerAction;
@@ -16,7 +18,7 @@ pub struct GameState {
     paused: bool,
 }
 
-const TABLE_COLS: usize = Resource::count() + 1;
+const TABLE_COLS: usize = Resource::VARIANT_COUNT + 1;
 const TABLE_WIDTHS: &[Constraint] = &[Constraint::Ratio(1, TABLE_COLS as u32); TABLE_COLS];
 
 impl GameState {
@@ -35,6 +37,10 @@ impl GameState {
         for p in self.players.iter_mut() {
             p.step();
         }
+    }
+
+    pub fn get_player_mut(&mut self, player: u8) -> &mut Player {
+        &mut self.players[player as usize]
     }
 
     pub fn resources_as_table(&self) -> Table {
@@ -74,8 +80,7 @@ impl GameState {
             Cell::from("Idle"),
             Cell::from(idle_count.to_string()),
         ]));
-        let active_workers = (0..Resource::count()).into_iter().map(|i| {
-            let res = <_ as TryInto<Resource>>::try_into(i).unwrap();
+        let active_workers = Resource::into_enum_iter().map(|res| {
             let count = p
                 .workers
                 .iter()

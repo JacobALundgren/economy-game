@@ -11,11 +11,14 @@ use tui::{
     widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table, TableState, Tabs},
 };
 
+use enum_iterator::IntoEnumIterator;
+
 use crate::game_state::GameState;
 use crate::input::InputAction;
+use crate::production::ProductionItem;
 use crate::resource::Resource;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, IntoEnumIterator, PartialEq)]
 pub enum TabType {
     Resources = 0,
     Help = 1,
@@ -23,10 +26,6 @@ pub enum TabType {
 }
 
 impl TabType {
-    pub const fn count() -> usize {
-        (TabType::Production as usize) + 1
-    }
-
     pub fn get_hotkey(&self) -> u8 {
         match self {
             TabType::Resources => b'r',
@@ -77,9 +76,13 @@ impl WrappingTableState {
     }
 
     fn next(&mut self) {
+        if self.min == self.max {
+            return;
+        }
         let curr = self.state.selected().unwrap();
-        self.state
-            .select(Some((curr + 1 - self.min).rem_euclid(self.max - self.min) + self.min));
+        self.state.select(Some(
+            (curr + 1 - self.min).rem_euclid(self.max - self.min) + self.min,
+        ));
     }
 
     fn new(min: usize, max: usize) -> Self {
@@ -93,9 +96,13 @@ impl WrappingTableState {
     }
 
     fn prev(&mut self) {
+        if self.min == self.max {
+            return;
+        }
         let curr = self.state.selected().unwrap();
         self.state.select(Some(
-            (((curr - self.min) as i32 - 1).rem_euclid((self.max - self.min) as i32) as usize) + self.min,
+            (((curr - self.min) as i32 - 1).rem_euclid((self.max - self.min) as i32) as usize)
+                + self.min,
         ));
     }
 }
@@ -107,7 +114,7 @@ struct ResourceTab {
 impl Default for ResourceTab {
     fn default() -> Self {
         ResourceTab {
-            worker_selected: WrappingTableState::new(1, Resource::count() + 1)
+            worker_selected: WrappingTableState::new(1, Resource::count() + 1),
         }
     }
 }
@@ -185,15 +192,71 @@ impl Tab for HelpTab {
     fn handle_input(&mut self, _: InputAction, _: &mut GameState) {}
 }
 
+struct ProductionTab {
+    selected: WrappingTableState,
+}
+
+impl Default for ProductionTab {
+    fn default() -> Self {
+        ProductionTab {
+            selected: WrappingTableState::new(0, ProductionItem::VARIANT_COUNT),
+        }
+    }
+}
+
+const TABLE_COLS: usize = Resource::VARIANT_COUNT + 1;
+const TABLE_WIDTHS: &[Constraint] = &[Constraint::Ratio(1, TABLE_COLS as u32); TABLE_COLS];
+
+impl Tab for ProductionTab {
+    fn draw<B: Backend>(&mut self, f: &mut Frame<B>, area: Rect, _: &GameState) {
+        let header =
+            Row::new(std::iter::once(Cell::from("Item")).chain(Resource::names().map(Cell::from)));
+        let content = ProductionItem::into_enum_iter().map(|item| {
+            Row::new(
+                std::iter::once(Cell::from(item.to_string())).chain(
+                    item.get_cost()
+                        .iter()
+                        .map(|val| Cell::from(val.to_string())),
+                ),
+            )
+        });
+        let table = Table::new(content)
+            .header(header)
+            .widths(&TABLE_WIDTHS)
+            .style(Style::default().fg(Color::White))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Thick)
+                    .style(Style::default().bg(Color::DarkGray)),
+            )
+            .highlight_style(Style::default().add_modifier(Modifier::BOLD))
+            .highlight_symbol(">>");
+
+        f.render_stateful_widget(table, area, self.selected.get_mut());
+    }
+
+    fn handle_input(&mut self, input: InputAction, state: &mut GameState) {
+        match input {
+            InputAction::MoveUp => self.selected.prev(),
+            InputAction::MoveDown => self.selected.next(),
+            InputAction::PerformAction => {
+                let item =
+                    <_ as TryInto<ProductionItem>>::try_into(self.selected.get_row()).unwrap();
+                item.produce(state);
+            }
+            _ => (),
+        }
+    }
+}
+
 fn draw_tabs<B: Backend>(f: &mut Frame<B>, area: Rect, sel: TabType) {
     let tab_bar = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(100)].as_ref())
         .split(area);
     let tabs = Tabs::new(
-        (0..TabType::count())
-            .into_iter()
-            .map(|i| <_ as TryInto<TabType>>::try_into(i).unwrap())
+        TabType::into_enum_iter()
             .map(|tab| {
                 Spans::from(vec![Span::from(format!(
                     "{} ({})",
@@ -228,6 +291,7 @@ pub struct Visualization<B: Backend> {
     tab: TabType,
     resource_tab: ResourceTab,
     help_tab: HelpTab,
+    prod_tab: ProductionTab,
 }
 
 impl<B: Backend> Visualization<B> {
@@ -237,6 +301,7 @@ impl<B: Backend> Visualization<B> {
             tab: TabType::Resources,
             resource_tab: ResourceTab::default(),
             help_tab: HelpTab::default(),
+            prod_tab: ProductionTab::default(),
         }
     }
 
@@ -246,6 +311,7 @@ impl<B: Backend> Visualization<B> {
             tab: ref mut sel_tab,
             resource_tab: ref mut res_tab,
             help_tab: ref mut h_tab,
+            prod_tab: ref mut p_tab,
         } = self;
         t.draw(|f| {
             let rects = Layout::default()
@@ -264,7 +330,7 @@ impl<B: Backend> Visualization<B> {
             match *sel_tab {
                 TabType::Resources => res_tab.draw(f, rects[1], state),
                 TabType::Help => h_tab.draw(f, rects[1], state),
-                TabType::Production => (),
+                TabType::Production => p_tab.draw(f, rects[1], state),
             }
             draw_status(f, rects[2], &state);
         })
@@ -276,6 +342,7 @@ impl<B: Backend> Visualization<B> {
             tab: ref mut sel_tab,
             resource_tab: ref mut res_tab,
             help_tab: ref mut h_tab,
+            prod_tab: ref mut p_tab,
             ..
         } = self;
         match input {
@@ -284,7 +351,7 @@ impl<B: Backend> Visualization<B> {
             i => match sel_tab {
                 TabType::Resources => res_tab.handle_input(i, state),
                 TabType::Help => h_tab.handle_input(i, state),
-                TabType::Production => (),
+                TabType::Production => p_tab.handle_input(i, state),
             },
         }
     }

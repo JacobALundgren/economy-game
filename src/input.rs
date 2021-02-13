@@ -1,4 +1,6 @@
-use std::{convert::TryInto, io};
+use std::io;
+
+use enum_iterator::IntoEnumIterator;
 
 use crate::visualization::TabType;
 pub enum InputAction {
@@ -9,13 +11,11 @@ pub enum InputAction {
     Decrease,
     Increase,
     SwitchTab(TabType),
+    PerformAction,
 }
 
 fn match_tab_hotkey(key: u8) -> Option<TabType> {
-    (0..TabType::count())
-        .into_iter()
-        .map(|i| <_ as TryInto<TabType>>::try_into(i).unwrap())
-        .find(|tab| tab.get_hotkey() == key)
+    TabType::into_enum_iter().find(|tab| tab.get_hotkey() == key)
 }
 
 pub fn parse_input<R: Iterator<Item = Result<u8, io::Error>>>(r: &mut R) -> Option<InputAction> {
@@ -26,6 +26,7 @@ pub fn parse_input<R: Iterator<Item = Result<u8, io::Error>>>(r: &mut R) -> Opti
     match item {
         b'q' => Some(InputAction::Quit),
         b'p' => Some(InputAction::TogglePause),
+        13 => Some(InputAction::PerformAction),
         27 => parse_escaped(r),
         _ => None,
     }

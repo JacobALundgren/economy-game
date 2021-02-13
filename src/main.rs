@@ -1,6 +1,7 @@
 mod game_state;
 mod input;
 mod player;
+mod production;
 mod resource;
 mod visualization;
 
