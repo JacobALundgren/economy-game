@@ -19,17 +19,19 @@ use crate::resource::Resource;
 pub enum TabType {
     Resources = 0,
     Help = 1,
+    Production = 2,
 }
 
 impl TabType {
     pub const fn count() -> usize {
-        (TabType::Help as usize) + 1
+        (TabType::Production as usize) + 1
     }
 
     pub fn get_hotkey(&self) -> u8 {
         match self {
             TabType::Resources => b'r',
             TabType::Help => b'h',
+            TabType::Production => b'd',
         }
     }
 }
@@ -41,6 +43,7 @@ impl TryFrom<usize> for TabType {
         match v {
             0 => Ok(TabType::Resources),
             1 => Ok(TabType::Help),
+            2 => Ok(TabType::Production),
             _ => Err(()),
         }
     }
@@ -58,11 +61,13 @@ trait Tab {
 }
 
 #[derive(Clone)]
-struct WorkerTableState {
+struct WrappingTableState {
     state: TableState,
+    min: usize,
+    max: usize,
 }
 
-impl WorkerTableState {
+impl WrappingTableState {
     fn get_mut(&mut self) -> &mut TableState {
         &mut self.state
     }
@@ -74,30 +79,37 @@ impl WorkerTableState {
     fn next(&mut self) {
         let curr = self.state.selected().unwrap();
         self.state
-            .select(Some(curr.rem_euclid(Resource::count()) + 1));
+            .select(Some((curr + 1 - self.min).rem_euclid(self.max - self.min) + self.min));
+    }
+
+    fn new(min: usize, max: usize) -> Self {
+        let mut ret = WrappingTableState {
+            state: TableState::default(),
+            min,
+            max,
+        };
+        ret.state.select(Some(min));
+        ret
     }
 
     fn prev(&mut self) {
         let curr = self.state.selected().unwrap();
         self.state.select(Some(
-            ((curr as i32 - 2).rem_euclid(Resource::count() as i32) + 1) as usize,
+            (((curr - self.min) as i32 - 1).rem_euclid((self.max - self.min) as i32) as usize) + self.min,
         ));
     }
 }
 
-impl Default for WorkerTableState {
-    fn default() -> Self {
-        let mut ret = WorkerTableState {
-            state: TableState::default(),
-        };
-        ret.state.select(Some(1));
-        ret
-    }
+struct ResourceTab {
+    worker_selected: WrappingTableState,
 }
 
-#[derive(Default)]
-struct ResourceTab {
-    worker_selected: WorkerTableState,
+impl Default for ResourceTab {
+    fn default() -> Self {
+        ResourceTab {
+            worker_selected: WrappingTableState::new(1, Resource::count() + 1)
+        }
+    }
 }
 
 impl Tab for ResourceTab {
@@ -252,6 +264,7 @@ impl<B: Backend> Visualization<B> {
             match *sel_tab {
                 TabType::Resources => res_tab.draw(f, rects[1], state),
                 TabType::Help => h_tab.draw(f, rects[1], state),
+                TabType::Production => (),
             }
             draw_status(f, rects[2], &state);
         })
@@ -271,6 +284,7 @@ impl<B: Backend> Visualization<B> {
             i => match sel_tab {
                 TabType::Resources => res_tab.handle_input(i, state),
                 TabType::Help => h_tab.handle_input(i, state),
+                TabType::Production => (),
             },
         }
     }
