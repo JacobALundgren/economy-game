@@ -1,6 +1,8 @@
-use std::{io, convert::TryInto};
+use std::io;
 
-use crate::visualization::Tab;
+use enum_iterator::IntoEnumIterator;
+
+use crate::visualization::TabType;
 pub enum InputAction {
     Quit,
     TogglePause,
@@ -8,17 +10,15 @@ pub enum InputAction {
     MoveDown,
     Decrease,
     Increase,
-    SwitchTab(Tab),
+    SwitchTab(TabType),
+    PerformAction,
 }
 
-fn match_tab_hotkey(key: u8) -> Option<Tab> {
-    (0..Tab::count())
-        .into_iter()
-        .map(|i| <_ as TryInto<Tab>>::try_into(i).unwrap())
-        .find(|tab| tab.get_hotkey() == key)
+fn match_tab_hotkey(key: u8) -> Option<TabType> {
+    TabType::into_enum_iter().find(|tab| tab.get_hotkey() == key)
 }
 
-pub fn parse_input<R: Iterator<Item=Result<u8, io::Error>>>(r: &mut R) -> Option<InputAction> {
+pub fn parse_input<R: Iterator<Item = Result<u8, io::Error>>>(r: &mut R) -> Option<InputAction> {
     let item = r.next()?.ok()?;
     if let Some(tab) = match_tab_hotkey(item) {
         return Some(InputAction::SwitchTab(tab));
@@ -26,12 +26,13 @@ pub fn parse_input<R: Iterator<Item=Result<u8, io::Error>>>(r: &mut R) -> Option
     match item {
         b'q' => Some(InputAction::Quit),
         b'p' => Some(InputAction::TogglePause),
+        13 => Some(InputAction::PerformAction),
         27 => parse_escaped(r),
         _ => None,
     }
 }
 
-fn parse_escaped<R: Iterator<Item=Result<u8, io::Error>>>(r: &mut R) -> Option<InputAction> {
+fn parse_escaped<R: Iterator<Item = Result<u8, io::Error>>>(r: &mut R) -> Option<InputAction> {
     let item = r.next()?;
     if item.ok()? != b'[' {
         return None;
