@@ -18,7 +18,7 @@ pub struct GameState {
     paused: bool,
 }
 
-const TABLE_COLS: usize = Resource::VARIANT_COUNT + 1;
+const TABLE_COLS: usize = Resource::VARIANT_COUNT + 2;
 const TABLE_WIDTHS: &[Constraint] = &[Constraint::Ratio(1, TABLE_COLS as u32); TABLE_COLS];
 
 impl GameState {
@@ -45,11 +45,13 @@ impl GameState {
 
     pub fn resources_as_table(&self) -> Table {
         let header: Vec<_> = std::iter::once(Cell::from("Player Id"))
+            .chain(std::iter::once(Cell::from("Money")))
             .chain(Resource::names().map(Cell::from))
             .collect();
         let content = self.players.iter().map(|p| {
-            let mut row = Vec::new();
+            let mut row = Vec::with_capacity(p.get_stockpile().iter().count() + 2);
             row.push(p.get_id().to_string());
+            row.push(p.get_money().to_string());
             for r in p.get_stockpile().iter() {
                 row.push(r.to_string());
             }

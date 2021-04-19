@@ -27,6 +27,7 @@ pub struct Player {
     id: u8,
     pub workers: Vec<Worker>,
     stockpile: ResourceAmount,
+    money: u64,
 }
 
 impl Player {
@@ -35,6 +36,7 @@ impl Player {
             id,
             workers: vec![Worker::new(), Worker::new(), Worker::new()],
             stockpile: ResourceAmount::new(),
+            money: 0,
         }
     }
 
@@ -51,12 +53,20 @@ impl Player {
         self.id
     }
 
+    pub fn get_money(&self) -> u64 {
+        self.money
+    }
+
     pub fn get_stockpile(&self) -> &ResourceAmount {
         &self.stockpile
     }
 
     pub fn get_stockpile_mut(&mut self) -> &mut ResourceAmount {
         &mut self.stockpile
+    }
+
+    pub fn add_money(&mut self, amount: u64) {
+        self.money += amount
     }
 }
 
