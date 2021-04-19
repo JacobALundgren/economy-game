@@ -17,12 +17,14 @@ use crate::game_state::GameState;
 use crate::input::InputAction;
 use crate::production::ProductionItem;
 use crate::resource::Resource;
+use crate::sell::{SellItem, Trade};
 
 #[derive(Clone, Copy, Debug, IntoEnumIterator, PartialEq)]
 pub enum TabType {
     Resources = 0,
     Help = 1,
     Production = 2,
+    Sell = 3,
 }
 
 impl TabType {
@@ -31,6 +33,7 @@ impl TabType {
             TabType::Resources => b'r',
             TabType::Help => b'h',
             TabType::Production => b'd',
+            TabType::Sell => b's',
         }
     }
 }
@@ -43,6 +46,7 @@ impl TryFrom<usize> for TabType {
             0 => Ok(TabType::Resources),
             1 => Ok(TabType::Help),
             2 => Ok(TabType::Production),
+            3 => Ok(TabType::Sell),
             _ => Err(()),
         }
     }
@@ -161,7 +165,8 @@ impl Tab for HelpTab {
             .split(area);
         let overview = Paragraph::new(concat!(
             "Control the allocation of your workers to different resources",
-            " using the arrow keys. Balance your economy to produce what you need."
+            " using the arrow keys. Balance your economy to produce what you need.",
+            " Sell resources for money."
         ))
         .block(
             Block::default()
@@ -250,6 +255,69 @@ impl Tab for ProductionTab {
     }
 }
 
+const SELL_TABLE_COLS: usize = Resource::VARIANT_COUNT + 2;
+const SELL_TABLE_WIDTHS: &[Constraint] =
+    &[Constraint::Ratio(1, SELL_TABLE_COLS as u32); SELL_TABLE_COLS];
+
+struct SellTab {
+    selected: WrappingTableState,
+}
+
+impl Default for SellTab {
+    fn default() -> Self {
+        SellTab {
+            selected: WrappingTableState::new(0, SellItem::VARIANT_COUNT),
+        }
+    }
+}
+
+impl Tab for SellTab {
+    fn draw<B: Backend>(&mut self, f: &mut Frame<B>, area: Rect, _: &GameState) {
+        let header = Row::new(
+            std::iter::once(Cell::from("Item"))
+                .chain(std::iter::once(Cell::from("Value")))
+                .chain(Resource::names().map(Cell::from)),
+        );
+        let content = SellItem::into_enum_iter().map(|item| {
+            let Trade {
+                give: res,
+                receive: money,
+            } = item.get_trade();
+            Row::new(
+                std::iter::once(Cell::from(item.to_string()))
+                    .chain(std::iter::once(Cell::from(money.to_string())))
+                    .chain(res.iter().map(|val| Cell::from(val.to_string()))),
+            )
+        });
+        let table = Table::new(content)
+            .header(header)
+            .widths(&SELL_TABLE_WIDTHS)
+            .style(Style::default().fg(Color::White))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Thick)
+                    .style(Style::default().bg(Color::DarkGray)),
+            )
+            .highlight_style(Style::default().add_modifier(Modifier::BOLD))
+            .highlight_symbol(">>");
+
+        f.render_stateful_widget(table, area, self.selected.get_mut());
+    }
+
+    fn handle_input(&mut self, input: InputAction, state: &mut GameState) {
+        match input {
+            InputAction::MoveUp => self.selected.prev(),
+            InputAction::MoveDown => self.selected.next(),
+            InputAction::PerformAction => {
+                let item = <_ as TryInto<SellItem>>::try_into(self.selected.get_row()).unwrap();
+                item.sell(state);
+            }
+            _ => (),
+        }
+    }
+}
+
 fn draw_tabs<B: Backend>(f: &mut Frame<B>, area: Rect, sel: TabType) {
     let tab_bar = Layout::default()
         .direction(Direction::Horizontal)
@@ -292,6 +360,7 @@ pub struct Visualization<B: Backend> {
     resource_tab: ResourceTab,
     help_tab: HelpTab,
     prod_tab: ProductionTab,
+    sell_tab: SellTab,
 }
 
 impl<B: Backend> Visualization<B> {
@@ -302,6 +371,7 @@ impl<B: Backend> Visualization<B> {
             resource_tab: ResourceTab::default(),
             help_tab: HelpTab::default(),
             prod_tab: ProductionTab::default(),
+            sell_tab: SellTab::default(),
         }
     }
 
@@ -312,6 +382,7 @@ impl<B: Backend> Visualization<B> {
             resource_tab: ref mut res_tab,
             help_tab: ref mut h_tab,
             prod_tab: ref mut p_tab,
+            sell_tab: ref mut s_tab,
         } = self;
         t.draw(|f| {
             let rects = Layout::default()
@@ -331,6 +402,7 @@ impl<B: Backend> Visualization<B> {
                 TabType::Resources => res_tab.draw(f, rects[1], state),
                 TabType::Help => h_tab.draw(f, rects[1], state),
                 TabType::Production => p_tab.draw(f, rects[1], state),
+                TabType::Sell => s_tab.draw(f, rects[1], state),
             }
             draw_status(f, rects[2], &state);
         })
@@ -343,6 +415,7 @@ impl<B: Backend> Visualization<B> {
             resource_tab: ref mut res_tab,
             help_tab: ref mut h_tab,
             prod_tab: ref mut p_tab,
+            sell_tab: ref mut s_tab,
             ..
         } = self;
         match input {
@@ -352,6 +425,7 @@ impl<B: Backend> Visualization<B> {
                 TabType::Resources => res_tab.handle_input(i, state),
                 TabType::Help => h_tab.handle_input(i, state),
                 TabType::Production => p_tab.handle_input(i, state),
+                TabType::Sell => s_tab.handle_input(i, state),
             },
         }
     }
