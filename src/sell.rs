@@ -2,7 +2,6 @@ use std::{convert::TryFrom, fmt};
 
 use enum_iterator::IntoEnumIterator;
 
-use crate::game_state::GameState;
 use crate::resource::{Resource, ResourceAmount};
 
 #[derive(Clone, Copy, Debug, IntoEnumIterator)]
@@ -12,13 +11,37 @@ pub enum SellItem {
     Copper = 2,
 }
 
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Trade {
     pub give: ResourceAmount,
     pub receive: u64,
 }
 
+#[derive(Debug)]
+pub struct ConsumerSector {
+    items: [Trade; SellItem::VARIANT_COUNT],
+}
+
+impl ConsumerSector {
+    pub fn get_trade(&self, item: SellItem) -> &Trade {
+        &self.items[item as usize]
+    }
+}
+
+impl Default for ConsumerSector {
+    fn default() -> Self {
+        let mut ret = ConsumerSector {
+            items: [Trade::default(); SellItem::VARIANT_COUNT],
+        };
+        for item in SellItem::into_enum_iter() {
+            ret.items[item as usize] = item.get_default_trade();
+        }
+        ret
+    }
+}
+
 impl SellItem {
-    pub fn get_trade(&self) -> Trade {
+    fn get_default_trade(&self) -> Trade {
         match self {
             SellItem::Iron => {
                 let mut cost = ResourceAmount::new();
@@ -42,21 +65,6 @@ impl SellItem {
                 Trade {
                     give: cost,
                     receive: 5,
-                }
-            }
-        }
-    }
-
-    pub fn sell(&self, state: &mut GameState) {
-        match self {
-            SellItem::Iron | SellItem::Stone | SellItem::Copper => {
-                let player = state.get_player_mut(0);
-                let Trade {
-                    give: cost,
-                    receive: money,
-                } = &self.get_trade();
-                if player.get_stockpile_mut().consume(cost) {
-                    player.add_money(*money);
                 }
             }
         }

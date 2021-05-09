@@ -11,11 +11,13 @@ use enum_iterator::IntoEnumIterator;
 use crate::player::Player;
 use crate::player::WorkerAction;
 use crate::resource::Resource;
+use crate::sell::{ConsumerSector, SellItem, Trade};
 
 #[derive(Debug)]
 pub struct GameState {
     players: Vec<Player>,
     paused: bool,
+    consumer_sector: ConsumerSector,
 }
 
 const TABLE_COLS: usize = Resource::VARIANT_COUNT + 2;
@@ -30,6 +32,7 @@ impl GameState {
         GameState {
             players,
             paused: false,
+            consumer_sector: ConsumerSector::default(),
         }
     }
 
@@ -146,6 +149,26 @@ impl GameState {
 
     pub fn is_paused(&self) -> bool {
         self.paused
+    }
+
+    pub fn get_sell_trade(&self, item: SellItem) -> &Trade {
+        self.consumer_sector.get_trade(item)
+    }
+
+    pub fn sell(&mut self, item: SellItem) {
+        let Self {
+            ref consumer_sector,
+            ref mut players,
+            ..
+        } = self;
+        let Trade {
+            give: cost,
+            receive: money,
+        } = consumer_sector.get_trade(item);
+        let player = &mut players[0];
+        if player.get_stockpile_mut().consume(cost) {
+            player.add_money(*money);
+        }
     }
 }
 

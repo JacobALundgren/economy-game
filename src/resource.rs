@@ -41,7 +41,7 @@ impl fmt::Display for Resource {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ResourceAmount {
     res: [u32; Resource::VARIANT_COUNT],
 }
