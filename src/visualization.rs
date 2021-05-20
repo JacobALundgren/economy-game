@@ -272,7 +272,7 @@ impl Default for SellTab {
 }
 
 impl Tab for SellTab {
-    fn draw<B: Backend>(&mut self, f: &mut Frame<B>, area: Rect, _: &GameState) {
+    fn draw<B: Backend>(&mut self, f: &mut Frame<B>, area: Rect, state: &GameState) {
         let header = Row::new(
             std::iter::once(Cell::from("Item"))
                 .chain(std::iter::once(Cell::from("Value")))
@@ -282,7 +282,7 @@ impl Tab for SellTab {
             let Trade {
                 give: res,
                 receive: money,
-            } = item.get_trade();
+            } = state.get_sell_trade(item);
             Row::new(
                 std::iter::once(Cell::from(item.to_string()))
                     .chain(std::iter::once(Cell::from(money.to_string())))
@@ -311,7 +311,7 @@ impl Tab for SellTab {
             InputAction::MoveDown => self.selected.next(),
             InputAction::PerformAction => {
                 let item = <_ as TryInto<SellItem>>::try_into(self.selected.get_row()).unwrap();
-                item.sell(state);
+                state.sell(item);
             }
             _ => (),
         }

@@ -1,8 +1,9 @@
 use std::{convert::TryFrom, fmt};
 
 use enum_iterator::IntoEnumIterator;
+use rand::thread_rng;
+use rand_distr::{Distribution, Normal};
 
-use crate::game_state::GameState;
 use crate::resource::{Resource, ResourceAmount};
 
 #[derive(Clone, Copy, Debug, IntoEnumIterator)]
@@ -12,20 +13,64 @@ pub enum SellItem {
     Copper = 2,
 }
 
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Trade {
     pub give: ResourceAmount,
     pub receive: u64,
 }
 
+#[derive(Debug)]
+pub struct ConsumerSector {
+    items: [Trade; SellItem::VARIANT_COUNT],
+}
+
+fn update_trade(trade: &Trade) -> Trade {
+    let mut rng = thread_rng();
+    let normal_dist = Normal::new(-0.01, 0.01).unwrap();
+    let val: f64 = normal_dist.sample(&mut rng);
+    Trade {
+        receive: ((trade.receive as f64) * val.exp()) as u64,
+        ..*trade
+    }
+}
+
+impl ConsumerSector {
+    pub fn get_trade(&self, item: SellItem) -> &Trade {
+        &self.items[item as usize]
+    }
+
+    pub fn trade(&mut self, stockpile: &mut ResourceAmount, item: SellItem) -> Option<u64> {
+        let trade = &mut self.items[item as usize];
+        let mut money = None;
+        if stockpile.consume(&trade.give) {
+            money = Some(trade.receive);
+            *trade = update_trade(&trade);
+        }
+        money
+    }
+}
+
+impl Default for ConsumerSector {
+    fn default() -> Self {
+        let mut ret = ConsumerSector {
+            items: [Trade::default(); SellItem::VARIANT_COUNT],
+        };
+        for item in SellItem::into_enum_iter() {
+            ret.items[item as usize] = item.get_default_trade();
+        }
+        ret
+    }
+}
+
 impl SellItem {
-    pub fn get_trade(&self) -> Trade {
+    fn get_default_trade(&self) -> Trade {
         match self {
             SellItem::Iron => {
                 let mut cost = ResourceAmount::new();
                 *cost.get_mut(Resource::Iron) = 100;
                 Trade {
                     give: cost,
-                    receive: 5,
+                    receive: 500,
                 }
             }
             SellItem::Stone => {
@@ -33,7 +78,7 @@ impl SellItem {
                 *cost.get_mut(Resource::Stone) = 100;
                 Trade {
                     give: cost,
-                    receive: 3,
+                    receive: 300,
                 }
             }
             SellItem::Copper => {
@@ -41,22 +86,7 @@ impl SellItem {
                 *cost.get_mut(Resource::Copper) = 100;
                 Trade {
                     give: cost,
-                    receive: 5,
-                }
-            }
-        }
-    }
-
-    pub fn sell(&self, state: &mut GameState) {
-        match self {
-            SellItem::Iron | SellItem::Stone | SellItem::Copper => {
-                let player = state.get_player_mut(0);
-                let Trade {
-                    give: cost,
-                    receive: money,
-                } = &self.get_trade();
-                if player.get_stockpile_mut().consume(cost) {
-                    player.add_money(*money);
+                    receive: 500,
                 }
             }
         }
