@@ -1,6 +1,8 @@
 use std::{convert::TryFrom, fmt};
 
 use enum_iterator::IntoEnumIterator;
+use rand::thread_rng;
+use rand_distr::{Distribution, Normal};
 
 use crate::resource::{Resource, ResourceAmount};
 
@@ -22,9 +24,29 @@ pub struct ConsumerSector {
     items: [Trade; SellItem::VARIANT_COUNT],
 }
 
+fn update_trade(trade: &Trade) -> Trade {
+    let mut rng = thread_rng();
+    let normal_dist = Normal::new(-0.01, 0.01).unwrap();
+    let val: f64 = normal_dist.sample(&mut rng);
+    Trade {
+        receive: ((trade.receive as f64) * val.exp()) as u64,
+        ..*trade
+    }
+}
+
 impl ConsumerSector {
     pub fn get_trade(&self, item: SellItem) -> &Trade {
         &self.items[item as usize]
+    }
+
+    pub fn trade(&mut self, stockpile: &mut ResourceAmount, item: SellItem) -> Option<u64> {
+        let trade = &mut self.items[item as usize];
+        let mut money = None;
+        if stockpile.consume(&trade.give) {
+            money = Some(trade.receive);
+            *trade = update_trade(&trade);
+        }
+        money
     }
 }
 
@@ -48,7 +70,7 @@ impl SellItem {
                 *cost.get_mut(Resource::Iron) = 100;
                 Trade {
                     give: cost,
-                    receive: 5,
+                    receive: 500,
                 }
             }
             SellItem::Stone => {
@@ -56,7 +78,7 @@ impl SellItem {
                 *cost.get_mut(Resource::Stone) = 100;
                 Trade {
                     give: cost,
-                    receive: 3,
+                    receive: 300,
                 }
             }
             SellItem::Copper => {
@@ -64,7 +86,7 @@ impl SellItem {
                 *cost.get_mut(Resource::Copper) = 100;
                 Trade {
                     give: cost,
-                    receive: 5,
+                    receive: 500,
                 }
             }
         }

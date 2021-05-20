@@ -157,17 +157,13 @@ impl GameState {
 
     pub fn sell(&mut self, item: SellItem) {
         let Self {
-            ref consumer_sector,
+            ref mut consumer_sector,
             ref mut players,
             ..
         } = self;
-        let Trade {
-            give: cost,
-            receive: money,
-        } = consumer_sector.get_trade(item);
         let player = &mut players[0];
-        if player.get_stockpile_mut().consume(cost) {
-            player.add_money(*money);
+        if let Some(money) = consumer_sector.trade(player.get_stockpile_mut(), item) {
+            player.add_money(money);
         }
     }
 }
