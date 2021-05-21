@@ -22,16 +22,18 @@ impl Worker {
     }
 }
 
+pub type PlayerId = u8;
+
 #[derive(Debug)]
 pub struct Player {
-    id: u8,
+    id: PlayerId,
     pub workers: Vec<Worker>,
     stockpile: ResourceAmount,
     money: u64,
 }
 
 impl Player {
-    pub fn new(id: u8) -> Self {
+    pub fn new(id: PlayerId) -> Self {
         Player {
             id,
             workers: vec![Worker::new(), Worker::new(), Worker::new()],
@@ -49,7 +51,7 @@ impl Player {
         }
     }
 
-    pub fn get_id(&self) -> u8 {
+    pub fn get_id(&self) -> PlayerId {
         self.id
     }
 
