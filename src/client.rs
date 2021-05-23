@@ -20,9 +20,11 @@ pub fn run_client(state: &mut GameState, _: PlayerId) {
     let mut counter = 0;
     'outer: loop {
         while let Some(in_action) = parse_input(&mut stdin) {
-            match in_action {
+            if let Some(game_action) = match in_action {
                 InputAction::Quit => break 'outer,
-                _ => vis.handle_input(in_action, state),
+                _ => vis.handle_input(in_action),
+            } {
+                state.handle_action(game_action);
             }
         }
         if !state.is_paused() {
@@ -34,6 +36,4 @@ pub fn run_client(state: &mut GameState, _: PlayerId) {
         vis.draw(state);
         thread::sleep(Duration::from_millis(20));
     }
-
 }
-

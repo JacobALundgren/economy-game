@@ -9,8 +9,17 @@ use tui::{
 use enum_iterator::IntoEnumIterator;
 
 use crate::player::{Player, PlayerId, WorkerAction};
+use crate::production::ProductionItem;
 use crate::resource::Resource;
 use crate::sell::{ConsumerSector, SellItem, Trade};
+
+pub enum GameAction {
+    AllocateWorker(PlayerId, Resource),
+    DeallocateWorker(PlayerId, Resource),
+    TogglePause,
+    Produce(PlayerId, ProductionItem),
+    Sell(PlayerId, SellItem),
+}
 
 #[derive(Debug)]
 pub struct GameState {
@@ -110,7 +119,7 @@ impl GameState {
             .highlight_symbol(">>")
     }
 
-    pub fn deallocate_player_worker(&mut self, player: PlayerId, r: Resource) -> bool {
+    fn deallocate_player_worker(&mut self, player: PlayerId, r: Resource) -> bool {
         let player = &mut self.players[player as usize];
         if let Some(worker) = player
             .workers
@@ -124,7 +133,7 @@ impl GameState {
         }
     }
 
-    pub fn allocate_player_worker(&mut self, player: PlayerId, r: Resource) -> bool {
+    fn allocate_player_worker(&mut self, player: PlayerId, r: Resource) -> bool {
         let player = &mut self.players[player as usize];
         if let Some(worker) = player
             .workers
@@ -138,7 +147,7 @@ impl GameState {
         }
     }
 
-    pub fn toggle_paused(&mut self) {
+    fn toggle_paused(&mut self) {
         self.paused = !self.paused;
     }
 
@@ -156,7 +165,11 @@ impl GameState {
         id
     }
 
-    pub fn sell(&mut self, item: SellItem) {
+    fn produce(&mut self, _: PlayerId, item: ProductionItem) {
+        item.produce(self);
+    }
+
+    fn sell(&mut self, item: SellItem) {
         let Self {
             ref mut consumer_sector,
             ref mut players,
@@ -165,6 +178,22 @@ impl GameState {
         let player = &mut players[0];
         if let Some(money) = consumer_sector.trade(player.get_stockpile_mut(), item) {
             player.add_money(money);
+        }
+    }
+
+    pub fn handle_action(&mut self, action: GameAction) {
+        match action {
+            GameAction::AllocateWorker(player, resource) => {
+                self.allocate_player_worker(player, resource);
+            }
+            GameAction::DeallocateWorker(player, resource) => {
+                self.deallocate_player_worker(player, resource);
+            }
+            GameAction::TogglePause => {
+                self.toggle_paused();
+            }
+            GameAction::Produce(player, item) => self.produce(player, item),
+            GameAction::Sell(_, item) => self.sell(item),
         }
     }
 }

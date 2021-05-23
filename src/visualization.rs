@@ -13,7 +13,7 @@ use tui::{
 
 use enum_iterator::IntoEnumIterator;
 
-use crate::game_state::GameState;
+use crate::game_state::{GameAction, GameState};
 use crate::input::InputAction;
 use crate::production::ProductionItem;
 use crate::resource::Resource;
@@ -60,7 +60,7 @@ impl fmt::Display for TabType {
 
 trait Tab {
     fn draw<B: Backend>(&mut self, f: &mut Frame<B>, area: Rect, state: &GameState);
-    fn handle_input(&mut self, input: InputAction, state: &mut GameState);
+    fn handle_input(&mut self, input: InputAction) -> Option<GameAction>;
 }
 
 #[derive(Clone)]
@@ -135,21 +135,27 @@ impl Tab for ResourceTab {
         f.render_stateful_widget(wt, main_blocks[1], self.worker_selected.get_mut());
     }
 
-    fn handle_input(&mut self, input: InputAction, state: &mut GameState) {
+    fn handle_input(&mut self, input: InputAction) -> Option<GameAction> {
         match input {
-            InputAction::MoveUp => self.worker_selected.prev(),
-            InputAction::MoveDown => self.worker_selected.next(),
+            InputAction::MoveUp => {
+                self.worker_selected.prev();
+                None
+            }
+            InputAction::MoveDown => {
+                self.worker_selected.next();
+                None
+            }
             InputAction::Decrease => {
                 let resource =
                     <_ as TryInto<Resource>>::try_into(self.worker_selected.get_row() - 1).unwrap();
-                state.deallocate_player_worker(0, resource);
+                Some(GameAction::DeallocateWorker(0, resource))
             }
             InputAction::Increase => {
                 let resource =
                     <_ as TryInto<Resource>>::try_into(self.worker_selected.get_row() - 1).unwrap();
-                state.allocate_player_worker(0, resource);
+                Some(GameAction::AllocateWorker(0, resource))
             }
-            _ => (),
+            _ => None,
         }
     }
 }
@@ -194,7 +200,9 @@ impl Tab for HelpTab {
         f.render_widget(table, blocks[1]);
     }
 
-    fn handle_input(&mut self, _: InputAction, _: &mut GameState) {}
+    fn handle_input(&mut self, _: InputAction) -> Option<GameAction> {
+        None
+    }
 }
 
 struct ProductionTab {
@@ -241,16 +249,22 @@ impl Tab for ProductionTab {
         f.render_stateful_widget(table, area, self.selected.get_mut());
     }
 
-    fn handle_input(&mut self, input: InputAction, state: &mut GameState) {
+    fn handle_input(&mut self, input: InputAction) -> Option<GameAction> {
         match input {
-            InputAction::MoveUp => self.selected.prev(),
-            InputAction::MoveDown => self.selected.next(),
+            InputAction::MoveUp => {
+                self.selected.prev();
+                None
+            }
+            InputAction::MoveDown => {
+                self.selected.next();
+                None
+            }
             InputAction::PerformAction => {
                 let item =
                     <_ as TryInto<ProductionItem>>::try_into(self.selected.get_row()).unwrap();
-                item.produce(state);
+                Some(GameAction::Produce(0, item))
             }
-            _ => (),
+            _ => None,
         }
     }
 }
@@ -305,15 +319,21 @@ impl Tab for SellTab {
         f.render_stateful_widget(table, area, self.selected.get_mut());
     }
 
-    fn handle_input(&mut self, input: InputAction, state: &mut GameState) {
+    fn handle_input(&mut self, input: InputAction) -> Option<GameAction> {
         match input {
-            InputAction::MoveUp => self.selected.prev(),
-            InputAction::MoveDown => self.selected.next(),
+            InputAction::MoveUp => {
+                self.selected.prev();
+                None
+            }
+            InputAction::MoveDown => {
+                self.selected.next();
+                None
+            }
             InputAction::PerformAction => {
                 let item = <_ as TryInto<SellItem>>::try_into(self.selected.get_row()).unwrap();
-                state.sell(item);
+                Some(GameAction::Sell(0, item))
             }
-            _ => (),
+            _ => None,
         }
     }
 }
@@ -409,7 +429,7 @@ impl<B: Backend> Visualization<B> {
         .unwrap();
     }
 
-    pub fn handle_input(&mut self, input: InputAction, state: &mut GameState) {
+    pub fn handle_input(&mut self, input: InputAction) -> Option<GameAction> {
         let Visualization::<B> {
             tab: ref mut sel_tab,
             resource_tab: ref mut res_tab,
@@ -419,13 +439,16 @@ impl<B: Backend> Visualization<B> {
             ..
         } = self;
         match input {
-            InputAction::TogglePause => state.toggle_paused(),
-            InputAction::SwitchTab(in_tab) => self.tab = in_tab,
+            InputAction::TogglePause => Some(GameAction::TogglePause),
+            InputAction::SwitchTab(in_tab) => {
+                self.tab = in_tab;
+                None
+            }
             i => match sel_tab {
-                TabType::Resources => res_tab.handle_input(i, state),
-                TabType::Help => h_tab.handle_input(i, state),
-                TabType::Production => p_tab.handle_input(i, state),
-                TabType::Sell => s_tab.handle_input(i, state),
+                TabType::Resources => res_tab.handle_input(i),
+                TabType::Help => h_tab.handle_input(i),
+                TabType::Production => p_tab.handle_input(i),
+                TabType::Sell => s_tab.handle_input(i),
             },
         }
     }
