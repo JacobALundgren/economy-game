@@ -3,7 +3,7 @@ use std::{convert::TryFrom, fmt};
 use enum_iterator::IntoEnumIterator;
 
 use crate::game_state::GameState;
-use crate::player::Worker;
+use crate::player::{PlayerId, Worker};
 use crate::resource::Resource;
 use crate::resource::ResourceAmount;
 
@@ -29,10 +29,10 @@ impl ProductionItem {
         }
     }
 
-    pub fn produce(&self, state: &mut GameState) {
+    pub fn produce(&self, player: PlayerId, state: &mut GameState) {
         match self {
             ProductionItem::WorkerIron | ProductionItem::WorkerStone => {
-                let player = state.get_player_mut(0);
+                let player = state.get_player_mut(player);
                 if player.get_stockpile_mut().consume(&self.get_cost()) {
                     player.workers.push(Worker::new());
                 }

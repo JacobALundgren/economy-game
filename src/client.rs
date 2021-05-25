@@ -7,7 +7,7 @@ use crate::input::{parse_input, InputAction};
 use crate::player::PlayerId;
 use crate::visualization::Visualization;
 
-pub fn run_client(state: &mut GameState, _: PlayerId) {
+pub fn run_client(state: &mut GameState, player: PlayerId) {
     let stdout = io::stdout().into_raw_mode().unwrap();
     let stdout = MouseTerminal::from(stdout);
     let stdout = AlternateScreen::from(stdout);
@@ -22,7 +22,7 @@ pub fn run_client(state: &mut GameState, _: PlayerId) {
         while let Some(in_action) = parse_input(&mut stdin) {
             if let Some(game_action) = match in_action {
                 InputAction::Quit => break 'outer,
-                _ => vis.handle_input(in_action),
+                _ => vis.handle_input(player, in_action),
             } {
                 state.handle_action(game_action);
             }
@@ -33,7 +33,7 @@ pub fn run_client(state: &mut GameState, _: PlayerId) {
                 state.step();
             }
         }
-        vis.draw(state);
+        vis.draw(player, state);
         thread::sleep(Duration::from_millis(20));
     }
 }

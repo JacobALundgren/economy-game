@@ -13,6 +13,7 @@ use crate::production::ProductionItem;
 use crate::resource::Resource;
 use crate::sell::{ConsumerSector, SellItem, Trade};
 
+#[derive(Clone, Copy, Debug)]
 pub enum GameAction {
     AllocateWorker(PlayerId, Resource),
     DeallocateWorker(PlayerId, Resource),
@@ -165,17 +166,17 @@ impl GameState {
         id
     }
 
-    fn produce(&mut self, _: PlayerId, item: ProductionItem) {
-        item.produce(self);
+    fn produce(&mut self, player: PlayerId, item: ProductionItem) {
+        item.produce(player, self);
     }
 
-    fn sell(&mut self, item: SellItem) {
+    fn sell(&mut self, player: PlayerId, item: SellItem) {
         let Self {
             ref mut consumer_sector,
             ref mut players,
             ..
         } = self;
-        let player = &mut players[0];
+        let player = &mut players[player as usize];
         if let Some(money) = consumer_sector.trade(player.get_stockpile_mut(), item) {
             player.add_money(money);
         }
@@ -193,7 +194,7 @@ impl GameState {
                 self.toggle_paused();
             }
             GameAction::Produce(player, item) => self.produce(player, item),
-            GameAction::Sell(_, item) => self.sell(item),
+            GameAction::Sell(player, item) => self.sell(player, item),
         }
     }
 }
