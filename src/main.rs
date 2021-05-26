@@ -1,3 +1,4 @@
+mod client;
 mod game_state;
 mod input;
 mod player;
@@ -6,41 +7,13 @@ mod resource;
 mod sell;
 mod visualization;
 
-use std::{error::Error, io, io::Read, thread, time::Duration};
-use termion::{async_stdin, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
-use tui::{backend::TermionBackend, Terminal};
-
+use client::run_client;
 use game_state::GameState;
-use input::{parse_input, InputAction};
-use visualization::Visualization;
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let stdout = io::stdout().into_raw_mode()?;
-    let stdout = MouseTerminal::from(stdout);
-    let stdout = AlternateScreen::from(stdout);
-    let backend = TermionBackend::new(stdout);
-    let terminal = Terminal::new(backend)?;
-    let mut vis = Visualization::new(terminal);
+fn main() {
+    let mut state = GameState::new();
+    state.register_player();
+    state.register_player();
 
-    let mut stdin = async_stdin().bytes();
-
-    let mut state = GameState::new(2);
-    let mut counter = 0;
-    'outer: loop {
-        while let Some(in_action) = parse_input(&mut stdin) {
-            match in_action {
-                InputAction::Quit => break 'outer,
-                _ => vis.handle_input(in_action, &mut state),
-            }
-        }
-        if !state.is_paused() {
-            counter = (counter + 1) % 10;
-            if counter == 0 {
-                state.step();
-            }
-        }
-        vis.draw(&mut state);
-        thread::sleep(Duration::from_millis(20));
-    }
-    Ok(())
+    run_client(&mut state, 0);
 }

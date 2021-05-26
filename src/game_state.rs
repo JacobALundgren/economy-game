@@ -8,10 +8,19 @@ use tui::{
 
 use enum_iterator::IntoEnumIterator;
 
-use crate::player::Player;
-use crate::player::WorkerAction;
+use crate::player::{Player, PlayerId, WorkerAction};
+use crate::production::ProductionItem;
 use crate::resource::Resource;
 use crate::sell::{ConsumerSector, SellItem, Trade};
+
+#[derive(Clone, Copy, Debug)]
+pub enum GameAction {
+    AllocateWorker(PlayerId, Resource),
+    DeallocateWorker(PlayerId, Resource),
+    TogglePause,
+    Produce(PlayerId, ProductionItem),
+    Sell(PlayerId, SellItem),
+}
 
 #[derive(Debug)]
 pub struct GameState {
@@ -24,13 +33,9 @@ const TABLE_COLS: usize = Resource::VARIANT_COUNT + 2;
 const TABLE_WIDTHS: &[Constraint] = &[Constraint::Ratio(1, TABLE_COLS as u32); TABLE_COLS];
 
 impl GameState {
-    pub fn new(num_players: u8) -> Self {
-        let mut players = Vec::new();
-        for id in 0u8..num_players {
-            players.push(Player::new(id));
-        }
+    pub fn new() -> Self {
         GameState {
-            players,
+            players: Vec::new(),
             paused: false,
             consumer_sector: ConsumerSector::default(),
         }
@@ -42,7 +47,7 @@ impl GameState {
         }
     }
 
-    pub fn get_player_mut(&mut self, player: u8) -> &mut Player {
+    pub fn get_player_mut(&mut self, player: PlayerId) -> &mut Player {
         &mut self.players[player as usize]
     }
 
@@ -74,7 +79,7 @@ impl GameState {
             )
     }
 
-    pub fn player_workers_as_table(&self, player: u8) -> Table {
+    pub fn player_workers_as_table(&self, player: PlayerId) -> Table {
         let p = &self.players[player as usize];
         let idle_count = p
             .workers
@@ -115,7 +120,7 @@ impl GameState {
             .highlight_symbol(">>")
     }
 
-    pub fn deallocate_player_worker(&mut self, player: u8, r: Resource) -> bool {
+    fn deallocate_player_worker(&mut self, player: PlayerId, r: Resource) -> bool {
         let player = &mut self.players[player as usize];
         if let Some(worker) = player
             .workers
@@ -129,7 +134,7 @@ impl GameState {
         }
     }
 
-    pub fn allocate_player_worker(&mut self, player: u8, r: Resource) -> bool {
+    fn allocate_player_worker(&mut self, player: PlayerId, r: Resource) -> bool {
         let player = &mut self.players[player as usize];
         if let Some(worker) = player
             .workers
@@ -143,7 +148,7 @@ impl GameState {
         }
     }
 
-    pub fn toggle_paused(&mut self) {
+    fn toggle_paused(&mut self) {
         self.paused = !self.paused;
     }
 
@@ -155,15 +160,41 @@ impl GameState {
         self.consumer_sector.get_trade(item)
     }
 
-    pub fn sell(&mut self, item: SellItem) {
+    pub fn register_player(&mut self) -> PlayerId {
+        let id = self.players.len() as PlayerId;
+        self.players.push(Player::new(id));
+        id
+    }
+
+    fn produce(&mut self, player: PlayerId, item: ProductionItem) {
+        item.produce(player, self);
+    }
+
+    fn sell(&mut self, player: PlayerId, item: SellItem) {
         let Self {
             ref mut consumer_sector,
             ref mut players,
             ..
         } = self;
-        let player = &mut players[0];
+        let player = &mut players[player as usize];
         if let Some(money) = consumer_sector.trade(player.get_stockpile_mut(), item) {
             player.add_money(money);
+        }
+    }
+
+    pub fn handle_action(&mut self, action: GameAction) {
+        match action {
+            GameAction::AllocateWorker(player, resource) => {
+                self.allocate_player_worker(player, resource);
+            }
+            GameAction::DeallocateWorker(player, resource) => {
+                self.deallocate_player_worker(player, resource);
+            }
+            GameAction::TogglePause => {
+                self.toggle_paused();
+            }
+            GameAction::Produce(player, item) => self.produce(player, item),
+            GameAction::Sell(player, item) => self.sell(player, item),
         }
     }
 }
