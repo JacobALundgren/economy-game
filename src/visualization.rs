@@ -234,7 +234,14 @@ const TABLE_COLS: usize = Resource::VARIANT_COUNT + 1;
 const TABLE_WIDTHS: &[Constraint] = &[Constraint::Ratio(1, TABLE_COLS as u32); TABLE_COLS];
 
 impl Tab for ProductionTab {
-    fn draw<B: Backend>(&mut self, f: &mut Frame<B>, area: Rect, _: PlayerId, _: &GameState) {
+    fn draw<B: Backend>(
+        &mut self,
+        f: &mut Frame<B>,
+        area: Rect,
+        player: PlayerId,
+        state: &GameState,
+    ) {
+        let player_stockpile = state.get_player(player).get_stockpile();
         let header =
             Row::new(std::iter::once(Cell::from("Item")).chain(Resource::names().map(Cell::from)));
         let content = ProductionItem::into_enum_iter().map(|item| {
@@ -242,7 +249,10 @@ impl Tab for ProductionTab {
                 std::iter::once(Cell::from(item.to_string())).chain(
                     item.get_cost()
                         .iter()
-                        .map(|val| Cell::from(val.to_string())),
+                        .zip(player_stockpile.iter())
+                        .map(|(cost, available)| {
+                            Cell::from(cost.to_string() + " / " + &available.to_string())
+                        }),
                 ),
             )
         });
@@ -299,7 +309,14 @@ impl Default for SellTab {
 }
 
 impl Tab for SellTab {
-    fn draw<B: Backend>(&mut self, f: &mut Frame<B>, area: Rect, _: PlayerId, state: &GameState) {
+    fn draw<B: Backend>(
+        &mut self,
+        f: &mut Frame<B>,
+        area: Rect,
+        player: PlayerId,
+        state: &GameState,
+    ) {
+        let player_stockpile = state.get_player(player).get_stockpile();
         let header = Row::new(
             std::iter::once(Cell::from("Item"))
                 .chain(std::iter::once(Cell::from("Value")))
@@ -313,7 +330,13 @@ impl Tab for SellTab {
             Row::new(
                 std::iter::once(Cell::from(item.to_string()))
                     .chain(std::iter::once(Cell::from(money.to_string())))
-                    .chain(res.iter().map(|val| Cell::from(val.to_string()))),
+                    .chain(
+                        res.iter()
+                            .zip(player_stockpile.iter())
+                            .map(|(cost, available)| {
+                                Cell::from(cost.to_string() + " / " + &available.to_string())
+                            }),
+                    ),
             )
         });
         let table = Table::new(content)

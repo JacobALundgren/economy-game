@@ -47,6 +47,10 @@ impl GameState {
         }
     }
 
+    pub fn get_player(&self, player: PlayerId) -> &Player {
+        &self.players[player as usize]
+    }
+
     pub fn get_player_mut(&mut self, player: PlayerId) -> &mut Player {
         &mut self.players[player as usize]
     }
