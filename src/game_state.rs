@@ -22,6 +22,23 @@ pub enum GameAction {
     Sell(PlayerId, SellItem),
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct Duration {
+    pub ticks: u64,
+}
+
+impl Duration {
+    pub const TICKS_PER_SEC: u64 = 5;
+}
+
+impl From<std::time::Duration> for Duration {
+    fn from(duration: std::time::Duration) -> Self {
+        Duration {
+            ticks: (duration.as_millis() as u64) * Self::TICKS_PER_SEC / 1000,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct GameState {
     players: Vec<Player>,
@@ -171,7 +188,10 @@ impl GameState {
     }
 
     fn produce(&mut self, player: PlayerId, item: ProductionItem) {
-        item.produce(player, self);
+        let player = self.get_player_mut(player);
+        if player.get_stockpile_mut().consume(&item.get_cost()) {
+            player.enqueue_production(item, item.get_production_time());
+        }
     }
 
     fn sell(&mut self, player: PlayerId, item: SellItem) {

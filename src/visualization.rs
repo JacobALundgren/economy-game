@@ -241,7 +241,8 @@ impl Tab for ProductionTab {
         player: PlayerId,
         state: &GameState,
     ) {
-        let player_stockpile = state.get_player(player).get_stockpile();
+        let player = state.get_player(player);
+        let player_stockpile = player.get_stockpile();
         let header =
             Row::new(std::iter::once(Cell::from("Item")).chain(Resource::names().map(Cell::from)));
         let content = ProductionItem::into_enum_iter().map(|item| {
@@ -269,7 +270,29 @@ impl Tab for ProductionTab {
             .highlight_style(Style::default().add_modifier(Modifier::BOLD))
             .highlight_symbol(">>");
 
-        f.render_stateful_widget(table, area, self.selected.get_mut());
+        let blocks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(10), Constraint::Percentage(90)].as_ref())
+            .split(area);
+
+        let current_production_string = player.get_current_production().map_or(
+            "No current production".to_owned(),
+            |(item, duration)| {
+                "Current production: ".to_owned()
+                    + item.to_string().as_str()
+                    + ", remaining ticks: "
+                    + duration.ticks.to_string().as_str()
+            },
+        );
+        let current_production_display = Paragraph::new(current_production_string).block(
+            Block::default()
+                .style(Style::default().bg(Color::DarkGray))
+                .borders(Borders::ALL)
+                .border_type(BorderType::Thick),
+        );
+
+        f.render_widget(current_production_display, blocks[0]);
+        f.render_stateful_widget(table, blocks[1], self.selected.get_mut());
     }
 
     fn handle_input(&mut self, player: PlayerId, input: InputAction) -> Option<GameAction> {
