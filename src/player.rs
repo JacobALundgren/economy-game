@@ -19,7 +19,7 @@ pub struct Worker {
 impl Worker {
     pub fn new() -> Self {
         Worker {
-            current_action: WorkerAction::Gather(Resource::Iron),
+            current_action: WorkerAction::Idle,
         }
     }
 }

@@ -109,7 +109,7 @@ impl GameState {
             .count();
         let idle_row = std::iter::once(Row::new(vec![
             Cell::from("Idle"),
-            Cell::from(idle_count.to_string()),
+            Cell::from(format!("  {}  ", idle_count)),
         ]));
         let active_workers = Resource::into_enum_iter().map(|res| {
             let count = p
@@ -117,9 +117,11 @@ impl GameState {
                 .iter()
                 .filter(|w| w.current_action == WorkerAction::Gather(res))
                 .count();
+            let dec_symb = if count > 0 { "<" } else { " " };
+            let inc_symb = if idle_count > 0 { ">" } else { " " };
             Row::new(vec![
                 Cell::from(res.to_string()),
-                Cell::from(count.to_string()),
+                Cell::from(format!("{} {} {}", dec_symb, count, inc_symb)),
             ])
         });
         Table::new(idle_row.chain(active_workers))
