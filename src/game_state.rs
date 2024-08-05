@@ -1,12 +1,10 @@
-use std::fmt;
-use tui::{
+use ratatui::{
     layout::Constraint,
     style::{Color, Modifier, Style},
     text::Span,
     widgets::{Block, BorderType, Borders, Cell, Row, Table},
 };
-
-use enum_iterator::IntoEnumIterator;
+use std::fmt;
 
 use crate::player::{Player, PlayerId, WorkerAction};
 use crate::production::ProductionItem;
@@ -46,7 +44,7 @@ pub struct GameState {
     consumer_sector: ConsumerSector,
 }
 
-const TABLE_COLS: usize = Resource::VARIANT_COUNT + 2;
+const TABLE_COLS: usize = enum_iterator::cardinality::<Resource>() + 2;
 const TABLE_WIDTHS: &[Constraint] = &[Constraint::Ratio(1, TABLE_COLS as u32); TABLE_COLS];
 
 impl GameState {
@@ -88,9 +86,8 @@ impl GameState {
         });
         let header = Row::new(header);
         let rows = content.map(|mut r| Row::new(r.drain(..).map(Cell::from)));
-        Table::new(rows)
+        Table::new(rows, TABLE_WIDTHS.iter())
             .header(header)
-            .widths(&TABLE_WIDTHS)
             .style(Style::default().fg(Color::White))
             .block(
                 Block::default()
@@ -111,7 +108,7 @@ impl GameState {
             Cell::from("Idle"),
             Cell::from(format!("  {}  ", idle_count)),
         ]));
-        let active_workers = Resource::into_enum_iter().map(|res| {
+        let active_workers = enum_iterator::all::<Resource>().map(|res| {
             let count = p
                 .workers
                 .iter()
@@ -124,23 +121,25 @@ impl GameState {
                 Cell::from(format!("{} {} {}", dec_symb, count, inc_symb)),
             ])
         });
-        Table::new(idle_row.chain(active_workers))
-            .widths(&[Constraint::Percentage(80), Constraint::Percentage(20)])
-            .style(Style::default())
-            .block(
-                Block::default()
-                    .title(Span::styled(
-                        "Workers",
-                        Style::default()
-                            .add_modifier(Modifier::BOLD)
-                            .fg(Color::LightRed),
-                    ))
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Thick)
-                    .style(Style::default().bg(Color::DarkGray)),
-            )
-            .highlight_style(Style::default().add_modifier(Modifier::BOLD))
-            .highlight_symbol(">>")
+        Table::new(
+            idle_row.chain(active_workers),
+            [Constraint::Percentage(80), Constraint::Percentage(20)].iter(),
+        )
+        .style(Style::default())
+        .block(
+            Block::default()
+                .title(Span::styled(
+                    "Workers",
+                    Style::default()
+                        .add_modifier(Modifier::BOLD)
+                        .fg(Color::LightRed),
+                ))
+                .borders(Borders::ALL)
+                .border_type(BorderType::Thick)
+                .style(Style::default().bg(Color::DarkGray)),
+        )
+        .highlight_style(Style::default().add_modifier(Modifier::BOLD))
+        .highlight_symbol(">>")
     }
 
     fn deallocate_player_worker(&mut self, player: PlayerId, r: Resource) -> bool {

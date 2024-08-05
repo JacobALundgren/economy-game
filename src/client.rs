@@ -1,6 +1,7 @@
+use ratatui::{backend::TermionBackend, Terminal};
 use std::{io, io::Read, thread, time::Duration};
-use termion::{async_stdin, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
-use tui::{backend::TermionBackend, Terminal};
+use termion::screen::IntoAlternateScreen;
+use termion::{async_stdin, input::MouseTerminal, raw::IntoRawMode};
 
 use crate::game_state::GameState;
 use crate::input::{parse_input, InputAction};
@@ -10,7 +11,7 @@ use crate::visualization::Visualization;
 pub fn run_client(state: &mut GameState, player: PlayerId) {
     let stdout = io::stdout().into_raw_mode().unwrap();
     let stdout = MouseTerminal::from(stdout);
-    let stdout = AlternateScreen::from(stdout);
+    let stdout = stdout.into_alternate_screen().unwrap();
     let backend = TermionBackend::new(stdout);
     let terminal = Terminal::new(backend).unwrap();
     let mut vis = Visualization::new(terminal);

@@ -3,9 +3,9 @@ use std::{
     fmt,
 };
 
-use enum_iterator::IntoEnumIterator;
+use enum_iterator::Sequence;
 
-#[derive(Clone, Copy, Debug, IntoEnumIterator, PartialEq)]
+#[derive(Clone, Copy, Debug, Sequence, PartialEq)]
 pub enum Resource {
     Iron = 0,
     Copper = 1,
@@ -18,7 +18,7 @@ impl Resource {
     }
 
     pub fn names() -> impl Iterator<Item = String> {
-        Self::into_enum_iter().map(|res| res.to_string())
+        enum_iterator::all::<Self>().map(|res| res.to_string())
     }
 }
 
@@ -43,13 +43,13 @@ impl fmt::Display for Resource {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ResourceAmount {
-    res: [u32; Resource::VARIANT_COUNT],
+    res: [u32; enum_iterator::cardinality::<Resource>()],
 }
 
 impl ResourceAmount {
     pub fn new() -> Self {
         ResourceAmount {
-            res: [0; Resource::VARIANT_COUNT],
+            res: [0; enum_iterator::cardinality::<Resource>()],
         }
     }
 
@@ -72,7 +72,7 @@ impl ResourceAmount {
     }
 
     fn has_available(&self, query: &ResourceAmount) -> bool {
-        Resource::into_enum_iter().all(|res| query.get(res) <= self.get(res))
+        enum_iterator::all::<Resource>().all(|res| query.get(res) <= self.get(res))
     }
 
     pub fn iter(&self) -> std::slice::Iter<u32> {

@@ -1,7 +1,5 @@
 use std::io;
 
-use enum_iterator::IntoEnumIterator;
-
 use crate::visualization::TabType;
 pub enum InputAction {
     Quit,
@@ -15,7 +13,7 @@ pub enum InputAction {
 }
 
 fn match_tab_hotkey(key: u8) -> Option<TabType> {
-    TabType::into_enum_iter().find(|tab| tab.get_hotkey() == key)
+    enum_iterator::all::<TabType>().find(|tab| tab.get_hotkey() == key)
 }
 
 pub fn parse_input<R: Iterator<Item = Result<u8, io::Error>>>(r: &mut R) -> Option<InputAction> {
