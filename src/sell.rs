@@ -44,7 +44,7 @@ impl ConsumerSector {
         let mut money = None;
         if stockpile.consume(&trade.give) {
             money = Some(trade.receive);
-            *trade = update_trade(&trade);
+            *trade = update_trade(trade);
         }
         money
     }

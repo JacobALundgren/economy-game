@@ -84,7 +84,7 @@ impl fmt::Display for ResourceAmount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for i in 0..self.res.len() {
             if let Ok(name) = <_ as TryInto<Resource>>::try_into(i) {
-                write!(f, "{}: {}\t", name.to_string(), self.res[i])?;
+                write!(f, "{}: {}\t", name, self.res[i])?;
             }
         }
         Ok(())

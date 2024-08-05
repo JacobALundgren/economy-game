@@ -184,7 +184,7 @@ impl Tab for HelpTab {
         );
         f.render_widget(overview, blocks[0]);
 
-        let hotkeys = vec![("p", "Toggle pause"), ("q", "Exit program")];
+        let hotkeys = [("p", "Toggle pause"), ("q", "Exit program")];
         let table = Table::new(
             hotkeys
                 .iter()
@@ -378,7 +378,7 @@ fn draw_tabs(f: &mut Frame, area: Rect, _: PlayerId, sel: TabType) {
         .split(area);
     let tabs = Tabs::new(
         enum_iterator::all::<TabType>()
-            .map(|tab| format!("{} ({})", tab.to_string(), tab.get_hotkey() as char)),
+            .map(|tab| format!("{} ({})", tab, tab.get_hotkey() as char)),
     )
     .block(Block::default().borders(Borders::ALL))
     .select(sel as usize)
@@ -450,7 +450,7 @@ impl<B: Backend> Visualization<B> {
                 TabType::Production => p_tab.draw(f, rects[1], player, state),
                 TabType::Sell => s_tab.draw(f, rects[1], player, state),
             }
-            draw_status(f, rects[2], player, &state);
+            draw_status(f, rects[2], player, state);
         })
         .unwrap();
     }
