@@ -2,7 +2,7 @@
 name = "unnamed_economy_game"
 version = "0.1.0"
 authors = ["Jacob Lundgren <jacob.a.lundgren@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 enum-iterator = "2.1.0"
