@@ -1,12 +1,12 @@
 use std::{convert::TryFrom, fmt};
 
-use enum_iterator::IntoEnumIterator;
+use enum_iterator::Sequence;
 use rand::thread_rng;
 use rand_distr::{Distribution, Normal};
 
 use crate::resource::{Resource, ResourceAmount};
 
-#[derive(Clone, Copy, Debug, IntoEnumIterator)]
+#[derive(Clone, Copy, Debug, Sequence)]
 pub enum SellItem {
     Iron = 0,
     Stone = 1,
@@ -21,7 +21,7 @@ pub struct Trade {
 
 #[derive(Debug)]
 pub struct ConsumerSector {
-    items: [Trade; SellItem::VARIANT_COUNT],
+    items: [Trade; enum_iterator::cardinality::<SellItem>()],
 }
 
 fn update_trade(trade: &Trade) -> Trade {
@@ -44,7 +44,7 @@ impl ConsumerSector {
         let mut money = None;
         if stockpile.consume(&trade.give) {
             money = Some(trade.receive);
-            *trade = update_trade(&trade);
+            *trade = update_trade(trade);
         }
         money
     }
@@ -53,9 +53,9 @@ impl ConsumerSector {
 impl Default for ConsumerSector {
     fn default() -> Self {
         let mut ret = ConsumerSector {
-            items: [Trade::default(); SellItem::VARIANT_COUNT],
+            items: [Trade::default(); enum_iterator::cardinality::<SellItem>()],
         };
-        for item in SellItem::into_enum_iter() {
+        for item in enum_iterator::all::<SellItem>() {
             ret.items[item as usize] = item.get_default_trade();
         }
         ret

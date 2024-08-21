@@ -2,14 +2,11 @@
 name = "unnamed_economy_game"
 version = "0.1.0"
 authors = ["Jacob Lundgren <jacob.a.lundgren@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
-crossterm = "0.19.0"
-enum-iterator = "0.6.0"
-ordered-float = "2.0.1"
-pathfinding = "2.1.1"
+enum-iterator = "2.1.0"
 rand = "0.8.3"
 rand_distr = "0.4.0"
-termion = "1.5.5"
-tui = "0.14.0"
+ratatui = { version = "0.27.0", features = ["termion"] }
+termion = "4.0.2"

@@ -1,17 +1,17 @@
-use std::{
-    convert::{TryFrom, TryInto},
-    fmt,
-};
-use tui::{
+use ratatui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     terminal::{Frame, Terminal},
-    text::{Span, Spans},
+    text::Span,
     widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table, TableState, Tabs},
 };
+use std::{
+    convert::{TryFrom, TryInto},
+    fmt,
+};
 
-use enum_iterator::IntoEnumIterator;
+use enum_iterator::Sequence;
 
 use crate::game_state::{GameAction, GameState};
 use crate::input::InputAction;
@@ -20,7 +20,7 @@ use crate::production::ProductionItem;
 use crate::resource::Resource;
 use crate::sell::{SellItem, Trade};
 
-#[derive(Clone, Copy, Debug, IntoEnumIterator, PartialEq)]
+#[derive(Clone, Copy, Debug, Sequence, PartialEq)]
 pub enum TabType {
     Resources = 0,
     Help = 1,
@@ -60,13 +60,7 @@ impl fmt::Display for TabType {
 }
 
 trait Tab {
-    fn draw<B: Backend>(
-        &mut self,
-        f: &mut Frame<B>,
-        area: Rect,
-        player: PlayerId,
-        state: &GameState,
-    );
+    fn draw(&mut self, f: &mut Frame, area: Rect, player: PlayerId, state: &GameState);
     fn handle_input(&mut self, player: PlayerId, input: InputAction) -> Option<GameAction>;
 }
 
@@ -131,13 +125,7 @@ impl Default for ResourceTab {
 }
 
 impl Tab for ResourceTab {
-    fn draw<B: Backend>(
-        &mut self,
-        f: &mut Frame<B>,
-        area: Rect,
-        player: PlayerId,
-        state: &GameState,
-    ) {
+    fn draw(&mut self, f: &mut Frame, area: Rect, player: PlayerId, state: &GameState) {
         let main_blocks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Length(area.width - 30), Constraint::Max(30)].as_ref())
@@ -177,7 +165,7 @@ impl Tab for ResourceTab {
 struct HelpTab {}
 
 impl Tab for HelpTab {
-    fn draw<B: Backend>(&mut self, f: &mut Frame<B>, area: Rect, _: PlayerId, _: &GameState) {
+    fn draw(&mut self, f: &mut Frame, area: Rect, _: PlayerId, _: &GameState) {
         let blocks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref())
@@ -196,13 +184,13 @@ impl Tab for HelpTab {
         );
         f.render_widget(overview, blocks[0]);
 
-        let hotkeys = vec![("p", "Toggle pause"), ("q", "Exit program")];
+        let hotkeys = [("p", "Toggle pause"), ("q", "Exit program")];
         let table = Table::new(
             hotkeys
                 .iter()
                 .map(|(key, desc)| Row::new(vec![Cell::from(*key), Cell::from(*desc)])),
+            [Constraint::Percentage(10), Constraint::Percentage(90)].iter(),
         )
-        .widths(&[Constraint::Percentage(10), Constraint::Percentage(90)])
         .block(
             Block::default()
                 .style(Style::default().bg(Color::DarkGray))
@@ -225,27 +213,21 @@ struct ProductionTab {
 impl Default for ProductionTab {
     fn default() -> Self {
         ProductionTab {
-            selected: WrappingTableState::new(0, ProductionItem::VARIANT_COUNT),
+            selected: WrappingTableState::new(0, enum_iterator::cardinality::<ProductionItem>()),
         }
     }
 }
 
-const TABLE_COLS: usize = Resource::VARIANT_COUNT + 1;
+const TABLE_COLS: usize = enum_iterator::cardinality::<Resource>() + 1;
 const TABLE_WIDTHS: &[Constraint] = &[Constraint::Ratio(1, TABLE_COLS as u32); TABLE_COLS];
 
 impl Tab for ProductionTab {
-    fn draw<B: Backend>(
-        &mut self,
-        f: &mut Frame<B>,
-        area: Rect,
-        player: PlayerId,
-        state: &GameState,
-    ) {
+    fn draw(&mut self, f: &mut Frame, area: Rect, player: PlayerId, state: &GameState) {
         let player = state.get_player(player);
         let player_stockpile = player.get_stockpile();
         let header =
             Row::new(std::iter::once(Cell::from("Item")).chain(Resource::names().map(Cell::from)));
-        let content = ProductionItem::into_enum_iter().map(|item| {
+        let content = enum_iterator::all::<ProductionItem>().map(|item| {
             Row::new(
                 std::iter::once(Cell::from(item.to_string())).chain(
                     item.get_cost()
@@ -257,9 +239,8 @@ impl Tab for ProductionTab {
                 ),
             )
         });
-        let table = Table::new(content)
+        let table = Table::new(content, TABLE_WIDTHS.iter())
             .header(header)
-            .widths(&TABLE_WIDTHS)
             .style(Style::default().fg(Color::White))
             .block(
                 Block::default()
@@ -315,7 +296,7 @@ impl Tab for ProductionTab {
     }
 }
 
-const SELL_TABLE_COLS: usize = Resource::VARIANT_COUNT + 2;
+const SELL_TABLE_COLS: usize = enum_iterator::cardinality::<Resource>() + 2;
 const SELL_TABLE_WIDTHS: &[Constraint] =
     &[Constraint::Ratio(1, SELL_TABLE_COLS as u32); SELL_TABLE_COLS];
 
@@ -326,26 +307,20 @@ struct SellTab {
 impl Default for SellTab {
     fn default() -> Self {
         SellTab {
-            selected: WrappingTableState::new(0, SellItem::VARIANT_COUNT),
+            selected: WrappingTableState::new(0, enum_iterator::cardinality::<SellItem>()),
         }
     }
 }
 
 impl Tab for SellTab {
-    fn draw<B: Backend>(
-        &mut self,
-        f: &mut Frame<B>,
-        area: Rect,
-        player: PlayerId,
-        state: &GameState,
-    ) {
+    fn draw(&mut self, f: &mut Frame, area: Rect, player: PlayerId, state: &GameState) {
         let player_stockpile = state.get_player(player).get_stockpile();
         let header = Row::new(
             std::iter::once(Cell::from("Item"))
                 .chain(std::iter::once(Cell::from("Value")))
                 .chain(Resource::names().map(Cell::from)),
         );
-        let content = SellItem::into_enum_iter().map(|item| {
+        let content = enum_iterator::all::<SellItem>().map(|item| {
             let Trade {
                 give: res,
                 receive: money,
@@ -362,9 +337,8 @@ impl Tab for SellTab {
                     ),
             )
         });
-        let table = Table::new(content)
+        let table = Table::new(content, SELL_TABLE_WIDTHS.iter())
             .header(header)
-            .widths(&SELL_TABLE_WIDTHS)
             .style(Style::default().fg(Color::White))
             .block(
                 Block::default()
@@ -397,21 +371,14 @@ impl Tab for SellTab {
     }
 }
 
-fn draw_tabs<B: Backend>(f: &mut Frame<B>, area: Rect, _: PlayerId, sel: TabType) {
+fn draw_tabs(f: &mut Frame, area: Rect, _: PlayerId, sel: TabType) {
     let tab_bar = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(100)].as_ref())
         .split(area);
     let tabs = Tabs::new(
-        TabType::into_enum_iter()
-            .map(|tab| {
-                Spans::from(vec![Span::from(format!(
-                    "{} ({})",
-                    tab.to_string(),
-                    tab.get_hotkey() as char
-                ))])
-            })
-            .collect(),
+        enum_iterator::all::<TabType>()
+            .map(|tab| format!("{} ({})", tab, tab.get_hotkey() as char)),
     )
     .block(Block::default().borders(Borders::ALL))
     .select(sel as usize)
@@ -423,7 +390,7 @@ fn draw_tabs<B: Backend>(f: &mut Frame<B>, area: Rect, _: PlayerId, sel: TabType
     f.render_widget(tabs, tab_bar[0]);
 }
 
-fn draw_status<B: Backend>(f: &mut Frame<B>, area: Rect, _: PlayerId, state: &GameState) {
+fn draw_status(f: &mut Frame, area: Rect, _: PlayerId, state: &GameState) {
     let exec_status = if state.is_paused() {
         "Paused"
     } else {
@@ -483,7 +450,7 @@ impl<B: Backend> Visualization<B> {
                 TabType::Production => p_tab.draw(f, rects[1], player, state),
                 TabType::Sell => s_tab.draw(f, rects[1], player, state),
             }
-            draw_status(f, rects[2], player, &state);
+            draw_status(f, rects[2], player, state);
         })
         .unwrap();
     }

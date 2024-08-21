@@ -8,7 +8,6 @@ mod sell;
 mod visualization;
 
 use client::run_client;
-use enum_iterator::IntoEnumIterator;
 use game_state::GameAction;
 use game_state::GameState;
 use resource::Resource;
@@ -18,7 +17,7 @@ fn main() {
     state.register_player();
     state.register_player();
 
-    for res in Resource::into_enum_iter() {
+    for res in enum_iterator::all::<Resource>() {
         state.handle_action(GameAction::AllocateWorker(1, res));
     }
 

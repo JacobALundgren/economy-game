@@ -1,13 +1,13 @@
 use std::{convert::TryFrom, fmt};
 
-use enum_iterator::IntoEnumIterator;
+use enum_iterator::Sequence;
 
 use crate::game_state::Duration;
 use crate::player::{Player, Worker};
 use crate::resource::Resource;
 use crate::resource::ResourceAmount;
 
-#[derive(Clone, Copy, Debug, IntoEnumIterator)]
+#[derive(Clone, Copy, Debug, Sequence)]
 pub enum ProductionItem {
     WorkerIron = 0,
     WorkerStone = 1,
